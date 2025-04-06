@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: FastAPI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/main.py",  // Path to your FastAPI main app
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend"
+            },
+            "envFile": "${workspaceFolder}/.env",  // Optional: Add this if you have env variables
+            "python": "${workspaceFolder}/backend/venv/bin/python"  // Path to your venv python
+        },
+        {
+            "name": "Script",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/script.py",  // Path to your FastAPI main app
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend"
+            },
+            "envFile": "${workspaceFolder}/.env",  // Optional: Add this if you have env variables
+            "python": "${workspaceFolder}/backend/venv/bin/python"  // Path to your venv python
+        }
+    ]
+}
