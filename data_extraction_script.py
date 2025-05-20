@@ -242,10 +242,17 @@ def create_save_docs_event(results_length, end_date, is_success):
 
 def insert_to_mongo(mongo_record, db, collection_name):
     try:
-        collection = db[collection_name]
-        collection.insert_many(mongo_record)
-        is_inserted = True
-    except:
+        if db == "":
+            # Write to file if db is empty string
+            with open(f"{collection_name}.json", "w") as f:
+                json.dump(mongo_record, f)
+            is_inserted = True
+        else:
+            collection = db[collection_name]
+            collection.insert_many(mongo_record)
+            is_inserted = True
+    except Exception as e:
+        print(f"Error inserting records: {str(e)}")
         is_inserted = False
 
     return is_inserted
@@ -253,8 +260,14 @@ def insert_to_mongo(mongo_record, db, collection_name):
 
 def get_latest_event_time(db):
     try:
-        collection = db["events"]
-        latest_event = collection.find_one({"eventType": "save_docs"}, sort=[("eventTime", -1)])
+        if db == "":
+            # Read from file if db is empty string
+            with open("events.json", "r") as f:
+                events = json.load(f)
+            latest_event = max(events, key=lambda x: x["eventTime"])
+        else:
+            collection = db["events"]
+            latest_event = collection.find_one({"eventType": "save_docs"}, sort=[("eventTime", -1)])
         if latest_event:
             return datetime.fromisoformat(latest_event["eventTime"].replace("Z", "+00:00"))
         return None
@@ -264,8 +277,11 @@ def get_latest_event_time(db):
 
 
 def main():
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["JewWatch"]
+    try:
+        client = MongoClient("mongodb://localhost:27017/")
+        db = client["JewWatch"]
+    except Exception:
+        db = ""
 
     # Load URL to country mapping
     url_to_country, country_code_to_name = load_url_to_country_mapping("url-to-country-mapping.txt")
@@ -282,10 +298,10 @@ def main():
 
     # Loop through each day
     current_date = start
-    while current_date <= end:
-        # Format dates for 1 day intervals
+    while current_date < end:
         start_date = current_date.strftime("%Y-%m-%d %H:%M:%S")
-        end_date = (current_date + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+        next_date = current_date + timedelta(days=1)
+        end_date = min(next_date, end).strftime("%Y-%m-%d %H:%M:%S")
 
         print(f"Extracting data from {start_date} to {end_date}")
 
@@ -309,8 +325,7 @@ def main():
         except Exception as e:
             print(f"Error processing data for {start_date}: {str(e)}")
 
-        # Increment by 30 minutes
-        current_date += timedelta(days=1)
+        current_date = next_date
 
 
 if __name__ == "__main__":
