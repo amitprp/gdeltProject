@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 from typing import Optional
 from functools import lru_cache
 
@@ -10,7 +10,9 @@ class Settings(BaseSettings):
     GDELT_UPDATE_INTERVAL: int = 15  # minutes
     DEBUG: bool = True
 
-    model_config = SettingsConfigDict(env_file=".env", extra="allow")
+    class Config:
+        env_file = ".env"
+        extra = "allow"
 
 
 @lru_cache()

@@ -2,6 +2,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .api.v1.endpoints import router as api_router
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO if not settings.DEBUG else logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()  # Log to console
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -27,4 +39,5 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
+    logger.info("Starting server...")
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

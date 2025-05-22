@@ -4,6 +4,10 @@ import pandas as pd
 from gdeltdoc import GdeltDoc, Filters
 import gdelt
 from ..core.database import articles_collection
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 class GdeltService:
     def __init__(self):
@@ -46,14 +50,14 @@ class GdeltService:
                 try:
                     await articles_collection.insert_many(articles_list)
                 except Exception as e:
-                    print(f"Error storing articles in MongoDB: {str(e)}")
+                    logger.error(f"Error storing articles in MongoDB: {str(e)}")
                     # Continue even if MongoDB storage fails
                     pass
                 
             return articles_list
             
         except Exception as e:
-            print(f"Error in get_antisemitic_articles: {str(e)}")
+            logger.error(f"Error in get_antisemitic_articles: {str(e)}")
             return []
         
     async def get_realtime_mentions(self) -> Dict[str, Any]:
@@ -106,7 +110,7 @@ class GdeltService:
             }
             
         except Exception as e:
-            print(f"Error in get_realtime_mentions: {str(e)}")
+            logger.error(f"Error in get_realtime_mentions: {str(e)}")
             return {"articles": [], "sentiment": 0, "total_mentions": 0}
             
     async def get_historical_data(self, days: int = 90) -> Dict[str, Any]:
@@ -165,7 +169,7 @@ class GdeltService:
             }
             
         except Exception as e:
-            print(f"Error in get_historical_data: {str(e)}")
+            logger.error(f"Error in get_historical_data: {str(e)}")
             return {
                 "timeline": [],
                 "top_countries": [],
@@ -197,5 +201,5 @@ class GdeltService:
             }
             
         except Exception as e:
-            print(f"Error in get_historical_data: {str(e)}")
+            logger.error(f"Error in get_historical_data: {str(e)}")
             return {"timeline": [], "top_sources": [], "top_countries": []}

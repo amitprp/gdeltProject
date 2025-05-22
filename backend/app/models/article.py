@@ -20,8 +20,9 @@ class Article(BaseModel):
     
     
 class TimelinePoint(BaseModel):
-    date: str
+    date: datetime
     count: int
+    tone: float
     
     
 class SourceCount(BaseModel):
@@ -32,6 +33,13 @@ class SourceCount(BaseModel):
 class CountryCount(BaseModel):
     country: str
     count: int
+    
+    
+class CountryData(BaseModel):
+    code: str
+    name: str
+    value: int
+    averageTone: float
     
     
 class HistoricalData(BaseModel):

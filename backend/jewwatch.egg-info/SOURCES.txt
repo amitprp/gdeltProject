@@ -1,3 +1,4 @@
+pyproject.toml
 setup.py
 app/__init__.py
 app/main.py
@@ -9,10 +10,19 @@ app/core/config.py
 app/core/database.py
 app/models/__init__.py
 app/models/article.py
+app/models/source_analysis.py
 app/services/__init__.py
+app/services/db_service.py
+app/services/file_db_service.py
 app/services/gdelt_service.py
+app/services/source_analysis_service.py
 jewwatch.egg-info/PKG-INFO
 jewwatch.egg-info/SOURCES.txt
 jewwatch.egg-info/dependency_links.txt
 jewwatch.egg-info/requires.txt
 jewwatch.egg-info/top_level.txt
+tests/__init__.py
+tests/conftest.py
+tests/api/__init__.py
+tests/api/v1/__init__.py
+tests/api/v1/test_endpoints.py

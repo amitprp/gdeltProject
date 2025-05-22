@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 220 25% 97%;
     --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
@@ -16,39 +16,38 @@
     --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
+    --secondary: 215 25% 94%;
     --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 210 40% 96.1%;
+    --muted: 215 25% 94%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
+    --accent: 215 25% 94%;
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
+    --border: 215 32% 92%;
+    --input: 215 32% 92%;
     --ring: 222.2 84% 4.9%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-
+    --sidebar-background: 220 25% 96%;
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
+    --sidebar-accent: 220 25% 93%;
     --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
+    --sidebar-border: 220 20% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Map color variables */
+    --map-low: #e0f2fe;      /* Light blue */
+    --map-medium: #38bdf8;   /* Medium blue */
+    --map-high: #0369a1;     /* Dark blue */
+    --map-severe: #831843;   /* Dark red */
   }
 
   .dark {
@@ -87,6 +86,12 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Map color variables for dark mode */
+    --map-low: #4D0000;
+    --map-medium: #800000;
+    --map-high: #B30000;
+    --map-severe: #FF0000;
   }
 }
 
@@ -98,4 +103,21 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Map color classes */
+.map-low {
+  fill: var(--map-low);
+}
+
+.map-medium {
+  fill: var(--map-medium);
+}
+
+.map-high {
+  fill: var(--map-high);
+}
+
+.map-severe {
+  fill: var(--map-severe);
 }

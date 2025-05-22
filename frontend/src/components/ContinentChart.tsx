@@ -1,17 +1,40 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, TooltipProps } from 'recharts';
 import { ContinentData } from '@/services/dataService';
+import { ExportButton } from "@/components/ExportButton";
 
 interface ContinentChartProps {
   data: ContinentData[];
 }
 
-const COLORS = ['#0369a1', '#2563eb', '#38bdf8', '#7dd3fc', '#e0f2fe', '#831843'];
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    payload: {
+      name: string;
+      value: number;
+    };
+  }>;
+}
+
+// Updated modern color palette
+const COLORS = [
+  '#0ea5e9', // Vivid sky blue
+  '#6366f1', // Indigo
+  '#8b5cf6', // Purple
+  '#ec4899', // Pink
+  '#f43f5e', // Rose
+  '#14b8a6', // Teal
+];
+
+const RADIAN = Math.PI / 180;
 
 const ContinentChart: React.FC<ContinentChartProps> = ({ data }) => {
   const [chartData, setChartData] = useState<{ name: string; value: number }[]>([]);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (data && data.length > 0) {
@@ -22,25 +45,62 @@ const ContinentChart: React.FC<ContinentChartProps> = ({ data }) => {
     }
   }, [data]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 shadow-md rounded-md border">
-          <p className="font-medium">{`${payload[0].name}`}</p>
-          <p className="text-sm">{`Articles: ${payload[0].value}`}</p>
+        <div className="bg-white p-3 shadow-lg rounded-lg border">
+          <p className="font-semibold text-gray-800">{`${payload[0].name}`}</p>
+          <p className="text-sm text-gray-600">{`Articles: ${payload[0].value.toLocaleString()}`}</p>
         </div>
       );
     }
     return null;
   };
 
+  const renderCustomizedLabel = ({
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+    percent,
+    index,
+    name,
+  }: any) => {
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    const percentage = (percent * 100).toFixed(0);
+    
+    // Only show label if percentage is greater than 5%
+    if (percent < 0.05) return null;
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="text-xs font-medium"
+      >
+        {`${percentage}%`}
+      </text>
+    );
+  };
+
   return (
     <Card className="shadow-md">
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Antisemitic Articles by Continent</CardTitle>
+        <ExportButton
+          targetRef={chartRef}
+          type="chart"
+          filename="continent-distribution"
+        />
       </CardHeader>
       <CardContent>
-        <div className="h-[300px] w-full">
+        <div className="h-[300px] w-full" ref={chartRef}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -48,21 +108,37 @@ const ContinentChart: React.FC<ContinentChartProps> = ({ data }) => {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                outerRadius={100}
-                fill="#8884d8"
+                outerRadius={115}
+                innerRadius={60}
+                paddingAngle={2}
                 dataKey="value"
                 nameKey="name"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                label={renderCustomizedLabel}
+                strokeWidth={2}
+                stroke="white"
               >
                 {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={COLORS[index % COLORS.length]}
+                    className="hover:opacity-80 transition-opacity duration-300"
+                  />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip 
+                content={<CustomTooltip />}
+                cursor={{ fill: 'var(--background)' }}
+              />
               <Legend 
                 layout="horizontal" 
                 verticalAlign="bottom" 
                 align="center"
+                formatter={(value) => (
+                  <span className="text-sm font-medium text-gray-700">{value}</span>
+                )}
+                wrapperStyle={{
+                  paddingTop: '20px'
+                }}
               />
             </PieChart>
           </ResponsiveContainer>
