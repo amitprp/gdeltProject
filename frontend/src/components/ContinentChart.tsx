@@ -20,6 +20,20 @@ interface CustomTooltipProps {
   }>;
 }
 
+// Cache interface
+interface CachedContinentData {
+  name: string;
+  articles: number;
+}
+
+interface CacheData {
+  continents: CachedContinentData[];
+  timestamp: number;
+}
+
+const CACHE_KEY = 'continentDataCache';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+
 // Updated modern color palette
 const COLORS = [
   '#0ea5e9', // Vivid sky blue
@@ -37,20 +51,62 @@ const ContinentChart: React.FC<ContinentChartProps> = ({ data }) => {
   const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (data && data.length > 0) {
-      setChartData(data.map(continent => ({
-        name: continent.name,
-        value: continent.totalArticles
-      })));
-    }
+    const loadData = () => {
+      // Try to get cached data
+      const cachedData = localStorage.getItem(CACHE_KEY);
+      if (cachedData) {
+        const { continents, timestamp }: CacheData = JSON.parse(cachedData);
+        const now = Date.now();
+        
+        // Check if cache is still valid (within 5 minutes)
+        if (now - timestamp < CACHE_DURATION) {
+          console.log('Using cached continent data');
+          // Transform cached data to chart format
+          setChartData(continents.map(continent => ({
+            name: continent.name,
+            value: continent.articles
+          })));
+          return;
+        }
+      }
+
+      // If no cache or cache expired, process new data
+      if (data && data.length > 0) {
+        // Prepare data for cache (only essential info)
+        const continentsToCache: CachedContinentData[] = data.map(continent => ({
+          name: continent.name,
+          articles: continent.totalArticles
+        }));
+
+        // Save to cache
+        const cacheData: CacheData = {
+          continents: continentsToCache,
+          timestamp: Date.now()
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+
+        // Set chart data
+        setChartData(continentsToCache.map(continent => ({
+          name: continent.name,
+          value: continent.articles
+        })));
+      }
+    };
+
+    loadData();
   }, [data]);
 
   const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
+      // Calculate percentage dynamically
+      const total = chartData.reduce((sum, item) => sum + item.value, 0);
+      const percentage = ((payload[0].value / total) * 100).toFixed(1);
+      
       return (
         <div className="bg-white p-3 shadow-lg rounded-lg border">
           <p className="font-semibold text-gray-800">{`${payload[0].name}`}</p>
           <p className="text-sm text-gray-600">{`Articles: ${payload[0].value.toLocaleString()}`}</p>
+          <p className="text-sm text-gray-600">{`Percentage: ${percentage}%`}</p>
         </div>
       );
     }
