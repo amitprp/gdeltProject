@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useNavigate } from 'react-router-dom';
@@ -28,10 +28,14 @@ const WorldMap: React.FC = () => {
     fetchData();
   }, []);
 
-  const initializeMap = async () => {
+  const initializeMap = useCallback(() => {
     if (!mapContainer.current || !mapboxToken) return;
 
     try {
+      if (map.current) {
+        map.current.remove();
+      }
+
       mapboxgl.accessToken = mapboxToken;
 
       map.current = new mapboxgl.Map({
@@ -61,80 +65,85 @@ const WorldMap: React.FC = () => {
           }
         });
 
-        // Add data-driven styling layer
-        map.current.addLayer({
-          id: 'country-fills-data',
-          type: 'fill',
-          source: 'country-boundaries',
-          'source-layer': 'country_boundaries',
-          paint: {
-            'fill-color': [
-              'match',
-              ['get', 'iso_3166_1'],
-              ...countryData.map(country => [
-                country.code,
-                country.value <= 10 ? '#e0f2fe' :  // map-low
-                country.value <= 50 ? '#38bdf8' :  // map-medium
-                country.value <= 100 ? '#0369a1' : // map-high
-                '#831843'                          // map-severe
-              ]).flat(),
-              'transparent'  // default color for countries not in our dataset
-            ],
-            'fill-opacity': 0.7
-          }
-        });
+        // Only add the data-driven layer if we have country data
+        if (countryData.length > 0) {
+          map.current.addLayer({
+            id: 'country-fills-data',
+            type: 'fill',
+            source: 'country-boundaries',
+            'source-layer': 'country_boundaries',
+            paint: {
+              'fill-color': [
+                'match',
+                ['get', 'iso_3166_1_alpha_2'],
+                ...countryData.map(country => [
+                  country.code,
+                  country.value <= 500 ? '#e0f2fe' :  // map-low
+                  country.value <= 10000 ? '#38bdf8' :  // map-medium
+                  country.value <= 100000 ? '#0369a1' : // map-high
+                  '#831843'                          // map-severe
+                ]).flat(),
+                'transparent'  // default color for countries not in our dataset
+              ],
+              'fill-opacity': 0.7
+            }
+          });
+
+          // Add interactivity only if we have the data layer
+          map.current.on('mousemove', 'country-fills-data', (e) => {
+            if (!e.features || e.features.length === 0) return;
+            
+            map.current!.getCanvas().style.cursor = 'pointer';
+            
+            const feature = e.features[0];
+            const countryCode = feature.properties?.iso_3166_1_alpha_2;
+            const countryInfo = countryData.find(c => c.code === countryCode);
+            
+            if (countryInfo) {
+              const popup = new mapboxgl.Popup({
+                closeButton: false,
+                closeOnClick: false
+              });
+              
+              const value = countryInfo.value;
+              popup.setLngLat(e.lngLat)
+                .setHTML(`
+                  <div class="font-bold">${countryInfo.name}</div>
+                  <div>Antisemitic Articles: ${value}</div>
+                `)
+                .addTo(map.current!);
+            }
+          });
+          
+          map.current.on('mouseleave', 'country-fills-data', () => {
+            map.current!.getCanvas().style.cursor = '';
+            const popups = document.getElementsByClassName('mapboxgl-popup');
+            while (popups[0]) {
+              popups[0].remove();
+            }
+          });
+          
+          map.current.on('click', 'country-fills-data', (e) => {
+            if (!e.features || e.features.length === 0) return;
+            
+            const feature = e.features[0];
+            const countryCode = feature.properties?.iso_3166_1_alpha_2;
+            console.log('Clicked country code:', countryCode); // Debug log
+            
+            if (countryCode) {
+              console.log('Navigating to country:', countryCode); // Debug log
+              navigate(`/country/${countryCode}`);
+            }
+          });
+        }
 
         setLoading(false);
-        
-        // Show popup on hover
-        const popup = new mapboxgl.Popup({
-          closeButton: false,
-          closeOnClick: false
-        });
-        
-        map.current.on('mousemove', 'country-fills-data', (e) => {
-          if (!e.features || e.features.length === 0) return;
-          
-          map.current!.getCanvas().style.cursor = 'pointer';
-          
-          const feature = e.features[0];
-          const countryCode = feature.properties?.iso_3166_1;
-          const countryInfo = countryData.find(c => c.code === countryCode);
-          
-          if (countryInfo) {
-            const value = countryInfo.value;
-            popup.setLngLat(e.lngLat)
-              .setHTML(`
-                <div class="font-bold">${countryInfo.name}</div>
-                <div>Antisemitic Articles: ${value}</div>
-              `)
-              .addTo(map.current!);
-          }
-        });
-        
-        map.current.on('mouseleave', 'country-fills-data', () => {
-          map.current!.getCanvas().style.cursor = '';
-          popup.remove();
-        });
-        
-        // Navigate to country page on click
-        map.current.on('click', 'country-fills-data', (e) => {
-          if (!e.features || e.features.length === 0) return;
-          
-          const countryCode = e.features[0].properties?.iso_3166_1;
-          console.log('Clicked country code:', countryCode); // Debug log
-          
-          if (countryCode) {
-            console.log('Navigating to country:', countryCode); // Debug log
-            navigate(`/country/${countryCode}`);
-          }
-        });
       });
     } catch (error) {
       console.error('Error initializing map:', error);
       setLoading(false);
     }
-  };
+  }, [mapboxToken, countryData, navigate]);
 
   useEffect(() => {
     if (mapboxToken) {
@@ -147,7 +156,7 @@ const WorldMap: React.FC = () => {
         map.current.remove();
       }
     };
-  }, [mapboxToken]);
+  }, [mapboxToken, initializeMap]);
 
   const handleTokenSubmit = (e: React.FormEvent) => {
     e.preventDefault();

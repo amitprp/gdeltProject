@@ -182,9 +182,10 @@ class DatabaseService:
 
             results = DatabaseService.aggregate_articles(pipeline)
 
-            # Convert country codes to names
+            # Convert country codes to names and add iso2
             for result in results:
                 result["name"] = get_country_name(result["code"])
+                result["iso2"] = result["code"]  # Add iso2 field to match FileDBService
 
             return results
         except Exception as e:
@@ -221,6 +222,7 @@ class DatabaseService:
             total_articles = 0
             for country in countries:
                 country["name"] = get_country_name(country["code"])
+                country["iso2"] = country["code"]  # Add iso2 field to match FileDBService
                 total_articles += country["value"]
 
             return {
