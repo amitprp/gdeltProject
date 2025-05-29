@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, ExternalLink } from "lucide-react";
+import { Loader2, ExternalLink, X } from "lucide-react";
 import {
   getGroupedSources,
   getSourceAnalysis,
@@ -54,12 +54,12 @@ const SourceAnalysis = () => {
     try {
       console.log('fetchSources called with:', { searchTerm, filterType, startDate, endDate });
       
-      if (searchTerm) {
+      if (searchTerm && searchTerm !== "") {
         const filters: SourceAnalysisFilters = {
           startDate,
           endDate,
           ...(filterType === "author" 
-            ? { author: searchTerm } 
+            ? { author: searchTerm.toLowerCase() }
             : { country: getCountryCode(searchTerm) || searchTerm }
           )
         };
@@ -70,6 +70,7 @@ const SourceAnalysis = () => {
         
         const convertedData: GroupedSourceData[] = data.map(item => ({
           name: filterType === "author" ? item.source : item.country,
+          source: item.source || item.pageAuthors,
           articleCount: item.articleCount,
           averageTone: item.averageTone,
           lastArticleDate: item.lastArticleDate,
@@ -98,8 +99,9 @@ const SourceAnalysis = () => {
     if (!term) {
       setDisplayedSources(apiResults);
     } else {
+      const searchLower = term.toLowerCase();
       const filtered = apiResults.filter(source =>
-        source.name.toLowerCase().includes(term.toLowerCase())
+        source.name.toLowerCase().includes(searchLower)
       );
       setDisplayedSources(filtered);
     }
@@ -144,9 +146,8 @@ const SourceAnalysis = () => {
               <Select
                 value={filterType}
                 onValueChange={(value: "author" | "country") => {
-                  setFilterType(value);
                   setSearchTerm("");
-                  setDisplayedSources(apiResults);
+                  setFilterType(value);
                 }}
               >
                 <SelectTrigger>
@@ -164,30 +165,78 @@ const SourceAnalysis = () => {
                 Search {filterType === "author" ? "Author" : "Country"}
               </label>
               {filterType === "country" ? (
-                <CountrySelect
-                  value={searchTerm}
-                  onChange={(name) => {
-                    setSearchTerm(name);
-                    setDisplayedSources(apiResults);
-                  }}
-                />
+                <div className="flex gap-2">
+                  <CountrySelect
+                    value={searchTerm}
+                    onChange={(name) => {
+                      setSearchTerm(name);
+                      if (!name) {
+                        fetchSources();
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      setSearchTerm("");
+                      fetchSources();
+                    }}
+                    title="Reset country search"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               ) : (
-                <Input
-                  placeholder="Search by author"
-                  value={searchTerm}
-                  onChange={(e) => handleSearchFilter(e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Search by author"
+                    value={searchTerm}
+                    onChange={(e) => handleSearchFilter(e.target.value)}
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setDisplayedSources(apiResults);
+                    }}
+                    title="Reset author search"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               )}
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Start Date</label>
-              <DatePicker date={startDate} setDate={setStartDate} />
+              <div className="flex gap-2">
+                <DatePicker date={startDate} setDate={setStartDate} />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setStartDate(undefined)}
+                  title="Reset start date"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium">End Date</label>
-              <DatePicker date={endDate} setDate={setEndDate} />
+              <div className="flex gap-2">
+                <DatePicker date={endDate} setDate={setEndDate} />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setEndDate(undefined)}
+                  title="Reset end date"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -231,6 +280,9 @@ const SourceAnalysis = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>{filterType === "author" ? "Author" : "Country"}</TableHead>
+                    {filterType === "country" && searchTerm && (
+                      <TableHead>Author</TableHead>
+                    )}
                     <TableHead className="text-right">Article Count</TableHead>
                     <TableHead className="text-right">Average Tone</TableHead>
                     <TableHead>Last Article</TableHead>
@@ -241,6 +293,9 @@ const SourceAnalysis = () => {
                   {displayedSources.map((source, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{source.name}</TableCell>
+                      {filterType === "country" && searchTerm && (
+                        <TableCell>{source.source || "Unknown"}</TableCell>
+                      )}
                       <TableCell className="text-right">{source.articleCount}</TableCell>
                       <TableCell className="text-right">
                         {source.averageTone.toFixed(2)}

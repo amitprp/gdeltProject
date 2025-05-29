@@ -193,11 +193,15 @@ class TimeFrameRequest(BaseModel):
 async def compare_trends(request: TimeFrameRequest):
     """Compare article trends between two time periods."""
     try:
+        # Log incoming request dates
+        logger.info(f"Comparing time periods with dates: TF1({request.timeframe1_start} - {request.timeframe1_end}), TF2({request.timeframe2_start} - {request.timeframe2_end})")
+        
         # Validate first time frame
         is_valid, error_message = validate_date_range(
             request.timeframe1_start, request.timeframe1_end
         )
         if not is_valid:
+            logger.error(f"Invalid first time frame: {error_message}")
             raise HTTPException(
                 status_code=400, detail=f"Invalid first time frame: {error_message}"
             )
@@ -207,6 +211,7 @@ async def compare_trends(request: TimeFrameRequest):
             request.timeframe2_start, request.timeframe2_end
         )
         if not is_valid:
+            logger.error(f"Invalid second time frame: {error_message}")
             raise HTTPException(
                 status_code=400, detail=f"Invalid second time frame: {error_message}"
             )
@@ -217,6 +222,11 @@ async def compare_trends(request: TimeFrameRequest):
             request.timeframe2_start,
             request.timeframe2_end,
         )
+        
+        # Log comparison results
+        logger.info(f"Comparison results: TF1({comparison[0]['articleCount']} articles), TF2({comparison[1]['articleCount']} articles)")
+        
         return comparison
     except Exception as e:
+        logger.error(f"Error in compare_trends: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -94,9 +94,10 @@ class FileDBService:
                     if article_authors is None:
                         return False
                     if isinstance(article_authors, list):
-                        if not any(author == value for author in article_authors):
+                        # Case-insensitive comparison for author list
+                        if not any(author.lower() == value.lower() for author in article_authors):
                             return False
-                    elif article_authors != value:
+                    elif article_authors.lower() != value.lower():  # Case-insensitive comparison for single author
                         return False
             return True
 

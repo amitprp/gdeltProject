@@ -250,6 +250,38 @@ COUNTRY_CODES: Dict[str, str] = {
     'ZW': 'Zimbabwe'
 }
 
+def get_country_code(name: str) -> str:
+    """Convert a country name to its ISO 3166-1 alpha-2 code."""
+    if not name:
+        return ""
+        
+    # If input is already a valid country code, return it
+    if name.upper() in COUNTRY_CODES:
+        return name.upper()
+        
+    # Create a reverse mapping of country names to codes
+    name_to_code = {v.lower(): k for k, v in COUNTRY_CODES.items()}
+    
+    # Special cases for common variations
+    special_cases = {
+        "united states": "US",
+        "united states of america": "US",
+        "usa": "US",
+        "uk": "GB",
+        "united kingdom": "GB",
+        "great britain": "GB",
+    }
+    
+    # Try to find the code
+    search_name = name.lower().strip()
+    
+    # First check special cases
+    if search_name in special_cases:
+        return special_cases[search_name]
+    
+    # Then try the standard mapping
+    return name_to_code.get(search_name, "")
+
 def get_country_name(code: str) -> str:
     """Convert a country code to its full name."""
     return COUNTRY_CODES.get(code, code) 

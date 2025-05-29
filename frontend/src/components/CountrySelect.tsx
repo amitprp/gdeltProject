@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -13,17 +14,30 @@ interface CountrySelectProps {
 }
 
 export function CountrySelect({ value, onChange }: CountrySelectProps) {
+  const [searchValue, setSearchValue] = useState("");
+
+  // Sort countries alphabetically
+  const sortedCountries = [...countries].sort((a, b) => a.name.localeCompare(b.name));
+
+  // Filter countries based on search
+  const filteredCountries = sortedCountries.filter((country) =>
+    country.name.toLowerCase().includes(searchValue.toLowerCase())
+  );
+
   return (
     <Select
       value={value}
-      onValueChange={onChange}
+      onValueChange={(val) => {
+        onChange(val);
+        setSearchValue("");
+      }}
     >
       <SelectTrigger>
         <SelectValue placeholder="Select a country" />
       </SelectTrigger>
       <SelectContent>
-        {countries.map((country) => (
-          <SelectItem key={country.code} value={country.name}>
+        {filteredCountries.map((country) => (
+          <SelectItem key={country.code} value={country.code}>
             {country.name}
           </SelectItem>
         ))}

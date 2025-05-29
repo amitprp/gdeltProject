@@ -7,19 +7,26 @@ import { Button } from "@/components/ui/button";
 import { getGlobalStats, getColorByValue, CountryData } from '@/services/dataService';
 import { Loader2, Globe } from 'lucide-react';
 
+// Your Mapbox public token
+const MAPBOX_TOKEN = 'pk.eyJ1Ijoia29iaXphIiwiYSI6ImNtOHZocDR6YTA1eGgybnNmdmRleG42bWYifQ.zEKcf1l2K12RHq3ZnrxXOA';
+
 const WorldMap: React.FC = () => {
   const navigate = useNavigate();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mapboxToken, setMapboxToken] = useState<string>('');
-  const [showTokenInput, setShowTokenInput] = useState(true);
+  const [showLoadButton, setShowLoadButton] = useState(true);
   const [countryData, setCountryData] = useState<CountryData[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const stats = await getGlobalStats();
+        console.log('Fetched country data:', stats.topCountries.map(country => ({
+          name: country.name,
+          code: country.code,
+          value: country.value
+        })));
         setCountryData(stats.topCountries);
       } catch (error) {
         console.error('Error fetching country data:', error);
@@ -29,14 +36,14 @@ const WorldMap: React.FC = () => {
   }, []);
 
   const initializeMap = useCallback(() => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current) return;
 
     try {
       if (map.current) {
         map.current.remove();
       }
 
-      mapboxgl.accessToken = mapboxToken;
+      mapboxgl.accessToken = MAPBOX_TOKEN;
 
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
@@ -67,6 +74,16 @@ const WorldMap: React.FC = () => {
 
         // Only add the data-driven layer if we have country data
         if (countryData.length > 0) {
+          console.log('Applying colors to countries with data:', countryData.map(country => ({
+            name: country.name,
+            code: country.code,
+            value: country.value,
+            color: country.value <= 100 ? '#e0f2fe' :   // Low (0-100)
+                   country.value <= 300 ? '#38bdf8' :   // Medium (101-300)
+                   country.value <= 500 ? '#0369a1' :   // High (301-500)
+                   '#831843'                            // Severe (501+)
+          })));
+
           map.current.addLayer({
             id: 'country-fills-data',
             type: 'fill',
@@ -75,13 +92,13 @@ const WorldMap: React.FC = () => {
             paint: {
               'fill-color': [
                 'match',
-                ['get', 'iso_3166_1_alpha_2'],
+                ['get', 'iso_3166_1'],
                 ...countryData.map(country => [
                   country.code,
-                  country.value <= 500 ? '#e0f2fe' :  // map-low
-                  country.value <= 10000 ? '#38bdf8' :  // map-medium
-                  country.value <= 100000 ? '#0369a1' : // map-high
-                  '#831843'                          // map-severe
+                  country.value <= 100 ? '#e0f2fe' :   // Low (0-100)
+                  country.value <= 300 ? '#38bdf8' :   // Medium (101-300)
+                  country.value <= 500 ? '#0369a1' :   // High (301-500)
+                  '#831843'                            // Severe (501+)
                 ]).flat(),
                 'transparent'  // default color for countries not in our dataset
               ],
@@ -89,7 +106,7 @@ const WorldMap: React.FC = () => {
             }
           });
 
-          // Add interactivity only if we have the data layer
+          // Add interactivity
           map.current.on('mousemove', 'country-fills-data', (e) => {
             if (!e.features || e.features.length === 0) return;
             
@@ -127,12 +144,23 @@ const WorldMap: React.FC = () => {
             if (!e.features || e.features.length === 0) return;
             
             const feature = e.features[0];
-            const countryCode = feature.properties?.iso_3166_1_alpha_2;
+            console.log('Feature properties:', feature.properties); // Debug log to see all properties
+            
+            // Try different ways to access the country code
+            const countryCode = feature.properties?.['iso_3166_1_alpha_2'] || 
+                              feature.properties?.['ISO_3166_1_ALPHA_2'] ||
+                              feature.properties?.['iso_3166_1'];
+                              
             console.log('Clicked country code:', countryCode); // Debug log
             
             if (countryCode) {
-              console.log('Navigating to country:', countryCode); // Debug log
-              navigate(`/country/${countryCode}`);
+              const countryInfo = countryData.find(c => c.code === countryCode);
+              if (countryInfo) {
+                console.log('Found country info:', countryInfo); // Debug log
+                navigate(`/country/${countryCode}`);
+              } else {
+                console.log('No data found for country:', countryCode); // Debug log
+              }
             }
           });
         }
@@ -143,55 +171,36 @@ const WorldMap: React.FC = () => {
       console.error('Error initializing map:', error);
       setLoading(false);
     }
-  }, [mapboxToken, countryData, navigate]);
+  }, [countryData, navigate]);
+
+  const handleLoadMap = () => {
+    setShowLoadButton(false);
+    initializeMap();
+  };
 
   useEffect(() => {
-    if (mapboxToken) {
-      setShowTokenInput(false);
-      initializeMap();
-    }
-    
     return () => {
       if (map.current) {
         map.current.remove();
       }
     };
-  }, [mapboxToken, initializeMap]);
-
-  const handleTokenSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const token = new FormData(form).get('token') as string;
-    if (token) {
-      setMapboxToken(token);
-    }
-  };
+  }, []);
 
   return (
     <Card className="w-full h-[600px] shadow-md">
       <CardContent className="p-0 relative overflow-hidden rounded-lg">
-        {showTokenInput ? (
+        {showLoadButton ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/90 p-6">
-            <form onSubmit={handleTokenSubmit} className="w-full max-w-md space-y-4">
-              <div className="flex justify-center mb-4">
-                <Globe className="h-12 w-12 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold text-center mb-4">Enter Mapbox Token</h3>
-              <p className="text-sm text-muted-foreground text-center">
-                Please enter your Mapbox public token to display the interactive globe.
-                You can get one from <a href="https://mapbox.com/" target="_blank" rel="noreferrer" className="text-primary underline">mapbox.com</a>
+            <div className="text-center space-y-4">
+              <Globe className="h-12 w-12 text-primary mx-auto" />
+              <h3 className="text-xl font-semibold">Interactive World Map</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Click the button below to load the interactive map and explore antisemitism data by country.
               </p>
-              <input
-                type="text"
-                name="token"
-                className="w-full p-2 border rounded-md"
-                placeholder="Enter your Mapbox public token"
-                required
-              />
-              <Button type="submit" className="w-full">
-                Load Globe
+              <Button onClick={handleLoadMap} className="mt-4">
+                Load Map
               </Button>
-            </form>
+            </div>
           </div>
         ) : loading ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50">
@@ -204,19 +213,19 @@ const WorldMap: React.FC = () => {
           <div className="space-y-1">
             <div className="flex items-center">
               <div className="w-4 h-4 bg-map-low mr-2 rounded-sm"></div>
-              <span className="text-xs">Low (0-10)</span>
+              <span className="text-xs">Low (0-100)</span>
             </div>
             <div className="flex items-center">
               <div className="w-4 h-4 bg-map-medium mr-2 rounded-sm"></div>
-              <span className="text-xs">Medium (11-50)</span>
+              <span className="text-xs">Medium (101-300)</span>
             </div>
             <div className="flex items-center">
               <div className="w-4 h-4 bg-map-high mr-2 rounded-sm"></div>
-              <span className="text-xs">High (51-100)</span>
+              <span className="text-xs">High (301-500)</span>
             </div>
             <div className="flex items-center">
               <div className="w-4 h-4 bg-map-severe mr-2 rounded-sm"></div>
-              <span className="text-xs">Severe (100+)</span>
+              <span className="text-xs">Severe (501+)</span>
             </div>
           </div>
         </div>

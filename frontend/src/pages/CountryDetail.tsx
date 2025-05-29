@@ -2,8 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getCountryData, getColorByValue, CountryData, getCountryTimeStats, CountryTimeStats } from '@/services/dataService';
-import { AlertTriangle, Globe, Newspaper, Calendar, FileX } from 'lucide-react';
+import { getCountryData, getColorByValue, CountryData, getCountryTimeStats } from '@/services/dataService';
+import { AlertTriangle, Globe, Newspaper, Calendar, FileX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DatePicker } from "@/components/ui/date-picker";
 import { ExportButton } from "@/components/ExportButton";
 import BackToHome from "@/components/BackToHome";
@@ -17,6 +17,43 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
+// Add interface for raw timeline data item from API
+interface RawTimelineItem {
+  date: string;
+  count: number;
+  tone?: number | null;
+}
+
+// Add interface for timeline data item
+interface TimelineDataItem {
+  date: string;
+  count: number;
+  tone?: number;
+}
+
+// Add interface for article data
+interface ArticleData {
+  title: string;
+  url: string;
+  date: string;
+  source: string;
+}
+
+// Update CountryTimeStats interface
+interface CountryTimeStats {
+  articleCount: number;
+  averageTone: number;
+  timelineData: TimelineDataItem[];
+  articles: ArticleData[];
+}
+
+// Add interface for export data
+interface ExportData {
+  [key: string]: string | number | Date;
+}
+
+const ARTICLES_PER_PAGE = 3;
+
 const CountryDetail: React.FC = () => {
   const { iso2 = '' } = useParams<{ iso2: string }>();
   const navigate = useNavigate();
@@ -27,9 +64,26 @@ const CountryDetail: React.FC = () => {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [dateError, setDateError] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   
   const chartRef = useRef<HTMLDivElement>(null);
   const articlesRef = useRef<HTMLDivElement>(null);
+
+  // Store initial data state
+  const [initialTimeStats, setInitialTimeStats] = useState<CountryTimeStats | null>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showAllArticles, setShowAllArticles] = useState(false);
+
+  // Format articles for export
+  const getFormattedArticles = (articles: ArticleData[]): ExportData[] => {
+    return articles.map(article => ({
+      title: article.title,
+      url: article.url,
+      date: article.date,
+      source: Array.isArray(article.source) ? article.source.join(", ") : article.source
+    }));
+  };
 
   // Date validation function
   const validateDates = (start: Date | undefined, end: Date | undefined): boolean => {
@@ -71,68 +125,164 @@ const CountryDetail: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        // First try to get basic country info
-        const countryData = await getCountryData(iso2);
-        
-        // If we get null or undefined for countryData, the country doesn't exist
-        if (!countryData) {
-          setError('Country not found');
-          setLoading(false);
-          return;
-        }
-
-        // We have valid country data, set it
-        setCountry(countryData);
-
-        // Now try to get the time stats
-        if ((startDate || endDate) && !validateDates(startDate, endDate)) {
-          return;
-        }
-
-        try {
-          const timeStatsData = await getCountryTimeStats(iso2, startDate, endDate);
-          setTimeStats(timeStatsData);
-        } catch (timeStatsError) {
-          // If we fail to get time stats, just set empty stats
-          // This is not an error state, just means no articles
-          setTimeStats({
-            articleCount: 0,
-            averageTone: 0,
-            timelineData: [],
-            articles: []
-          });
-        }
-      } catch (error) {
-        // Only set error if it's specifically about country not found
-        if (error instanceof Error && error.message.includes('not found')) {
-          setError('Country not found');
-        } else {
-          // For other errors, we'll still try to show the country page
-          console.error("Error fetching data:", error);
-          setTimeStats({
-            articleCount: 0,
-            averageTone: 0,
-            timelineData: [],
-            articles: []
-          });
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (iso2) {
-      fetchData();
+  // Format dates for API call
+  const formatDateForAPI = (date: Date | undefined, isEndDate: boolean = false): Date | undefined => {
+    if (!date) return undefined;
+    
+    const formattedDate = new Date(date);
+    if (isEndDate) {
+      formattedDate.setHours(23, 59, 59, 999);
+    } else {
+      formattedDate.setHours(0, 0, 0, 0);
     }
-  }, [iso2, startDate, endDate]);
+    return formattedDate;
+  };
 
-  if (loading) {
+  // Handle search button click
+  const handleSearch = () => {
+    if (!dateError && validateDates(startDate, endDate)) {
+      setIsSearching(true);
+      fetchData(false);
+    }
+  };
+
+  // Reset filters
+  const handleReset = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setDateError(null);
+    // Restore the initial data instead of fetching new data
+    if (initialTimeStats) {
+      setTimeStats(initialTimeStats);
+    }
+  };
+
+  // Fetch data function
+  const fetchData = async (isInitialFetch: boolean = false) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // First try to get basic country info
+      const countryData = await getCountryData(iso2);
+      
+      // If we get null or undefined for countryData, the country doesn't exist
+      if (!countryData) {
+        setError('Country not found');
+        setLoading(false);
+        return;
+      }
+
+      // We have valid country data, set it
+      setCountry(countryData);
+
+      try {
+        // Format dates for API call
+        const apiStartDate = formatDateForAPI(startDate);
+        const apiEndDate = formatDateForAPI(endDate, true);
+        
+        const timeStatsData = await getCountryTimeStats(iso2, apiStartDate, apiEndDate);
+        console.log('Raw timeStats data:', timeStatsData);
+        
+        // Process the timeline data to ensure dates are properly formatted
+        if (timeStatsData.timelineData && timeStatsData.timelineData.length > 0) {
+          console.log('Processing timeline data:', timeStatsData.timelineData);
+          timeStatsData.timelineData = timeStatsData.timelineData
+            .map((item: RawTimelineItem) => {
+              // Ensure we have valid data
+              if (!item.date || typeof item.count !== 'number') {
+                console.warn('Invalid timeline item:', item);
+                return null;
+              }
+              const timelineItem: TimelineDataItem = {
+                date: item.date,
+                count: Number(item.count)
+              };
+              if ('tone' in item && item.tone !== null) {
+                timelineItem.tone = Number(item.tone);
+              }
+              return timelineItem;
+            })
+            .filter((item): item is TimelineDataItem => item !== null);
+          console.log('Processed timeline data:', timeStatsData.timelineData);
+        }
+        
+        // Store initial data if this is the initial fetch
+        if (isInitialFetch) {
+          setInitialTimeStats(timeStatsData);
+        }
+        
+        setTimeStats(timeStatsData);
+      } catch (timeStatsError) {
+        // If we fail to get time stats, just set empty stats
+        const emptyStats = {
+          articleCount: 0,
+          averageTone: 0,
+          timelineData: [],
+          articles: []
+        };
+        setTimeStats(emptyStats);
+        if (isInitialFetch) {
+          setInitialTimeStats(emptyStats);
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('not found')) {
+        setError('Country not found');
+      } else {
+        console.error("Error fetching data:", error);
+        const emptyStats = {
+          articleCount: 0,
+          averageTone: 0,
+          timelineData: [],
+          articles: []
+        };
+        setTimeStats(emptyStats);
+        if (isInitialFetch) {
+          setInitialTimeStats(emptyStats);
+        }
+      }
+    } finally {
+      setLoading(false);
+      setIsSearching(false);
+    }
+  };
+
+  // Initial data fetch
+  useEffect(() => {
+    if (iso2) {
+      fetchData(true); // Pass true to indicate this is the initial fetch
+    }
+  }, [iso2]);
+
+  // Calculate total pages
+  const getTotalPages = (articles: ArticleData[]) => {
+    return Math.ceil(articles.length / ARTICLES_PER_PAGE);
+  };
+
+  // Get current articles to display
+  const getCurrentArticles = (articles: ArticleData[]) => {
+    const startIndex = (currentPage - 1) * ARTICLES_PER_PAGE;
+    return articles.slice(startIndex, startIndex + ARTICLES_PER_PAGE);
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
+  // Toggle show all articles
+  const toggleShowAll = () => {
+    setShowAllArticles(!showAllArticles);
+    setCurrentPage(1);
+  };
+
+  // Reset pagination when timeStats changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [timeStats]);
+
+  if (loading && !isSearching) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -167,8 +317,8 @@ const CountryDetail: React.FC = () => {
     const getSeverityLabel = (value: number) => {
       if (value === 0) return "Low";
       if (value < 100) return "Low";
-      if (value < 200) return "Medium";
-      if (value < 300) return "High";
+      if (value < 300) return "Medium";
+      if (value < 500) return "High";
       return "Severe";
     };
 
@@ -189,23 +339,46 @@ const CountryDetail: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-3 shadow-md">
             <CardHeader>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <CardTitle className="text-2xl md:text-3xl flex items-center">
                   <Globe className="mr-3 h-6 w-6" />
                   {country.name}
                 </CardTitle>
-                {hasArticles && (
-                  <div className="flex items-center gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Start Date</label>
-                      <DatePicker date={startDate} setDate={handleStartDateChange} />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">End Date</label>
-                      <DatePicker date={endDate} setDate={handleEndDateChange} />
-                    </div>
+                <div className="flex flex-col md:flex-row items-start md:items-end gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Start Date</label>
+                    <DatePicker date={startDate} setDate={handleStartDateChange} />
                   </div>
-                )}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">End Date</label>
+                    <DatePicker date={endDate} setDate={handleEndDateChange} />
+                  </div>
+                  <div className="flex gap-2 self-end">
+                    <Button 
+                      onClick={handleSearch}
+                      disabled={!!dateError || loading}
+                      className="whitespace-nowrap"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-2"></div>
+                          Searching...
+                        </>
+                      ) : (
+                        'Search'
+                      )}
+                    </Button>
+                    {(startDate || endDate) && (
+                      <Button 
+                        variant="outline" 
+                        onClick={handleReset}
+                        disabled={loading}
+                      >
+                        Reset
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
               {dateError && (
                 <div className="mt-2 text-sm text-destructive">
@@ -236,14 +409,26 @@ const CountryDetail: React.FC = () => {
             </CardContent>
           </Card>
           
-          {(!timeStats || timeStats.articleCount === 0) ? (
+          {loading ? (
+            <Card className="lg:col-span-3 shadow-md">
+              <CardContent>
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-4 text-lg">Loading data...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (!timeStats || timeStats.articleCount === 0) ? (
             <Card className="lg:col-span-3 shadow-md">
               <CardContent>
                 <div className="text-center py-12">
                   <FileX className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-xl font-semibold mb-2">No Articles Found</h3>
                   <p className="text-muted-foreground max-w-md mx-auto">
-                    No antisemitic articles have been detected for {country.name}.
+                    {startDate || endDate ? 
+                      `No articles found for ${country.name} in the selected date range.` :
+                      `No antisemitic articles have been detected for ${country.name}.`
+                    }
                   </p>
                 </div>
               </CardContent>
@@ -285,16 +470,18 @@ const CountryDetail: React.FC = () => {
                     <Newspaper className="mr-2 h-5 w-5" />
                     Recent Articles
                   </CardTitle>
-                  <ExportButton
-                    targetRef={articlesRef}
-                    type="table"
-                    data={timeStats.articles}
-                    filename={`${country.name}-articles`}
-                  />
+                  <div className="flex items-center gap-2">
+                    <ExportButton
+                      targetRef={articlesRef}
+                      type="table"
+                      data={getFormattedArticles(timeStats.articles)}
+                      filename={`${country.name}-articles`}
+                    />
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4" ref={articlesRef}>
-                    {timeStats.articles.map((article, index) => (
+                    {getCurrentArticles(timeStats.articles).map((article, index) => (
                       <div key={index} className="rounded-md border p-3">
                         <h4 className="font-medium text-sm">{article.title}</h4>
                         <p className="text-xs text-muted-foreground mt-1">
@@ -311,6 +498,30 @@ const CountryDetail: React.FC = () => {
                       </div>
                     ))}
                   </div>
+                  
+                  {timeStats.articles.length > ARTICLES_PER_PAGE && (
+                    <div className="mt-4 flex justify-center items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm">
+                        Page {currentPage} of {getTotalPages(timeStats.articles)}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === getTotalPages(timeStats.articles)}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </>
