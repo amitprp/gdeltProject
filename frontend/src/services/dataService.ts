@@ -50,6 +50,7 @@ export interface CountryTimeStats {
 
 export interface GroupedSourceData {
   name: string;
+  source?: string;  // Optional source field for country grouping
   articleCount: number;
   averageTone: number;
   lastArticleDate: string;
@@ -74,6 +75,7 @@ export interface SourceAnalysisFilters {
 
 export interface SourceAnalysisData {
   source: string;
+  pageAuthors?: string;  // Optional pageAuthors field
   country: string;
   articleCount: number;
   averageTone: number;
