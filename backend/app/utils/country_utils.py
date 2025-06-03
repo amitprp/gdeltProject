@@ -233,7 +233,7 @@ COUNTRY_CODES: Dict[str, str] = {
     'UG': 'Uganda',
     'UA': 'Ukraine',
     'AE': 'United Arab Emirates',
-    'GB': 'United Kingdom',
+    'UK': 'United Kingdom',
     'US': 'United States',
     'UM': 'United States Minor Outlying Islands',
     'UY': 'Uruguay',
@@ -258,7 +258,7 @@ def get_country_code(name: str) -> str:
     # If input is already a valid country code, return it
     if name.upper() in COUNTRY_CODES:
         return name.upper()
-        
+    
     # Create a reverse mapping of country names to codes
     name_to_code = {v.lower(): k for k, v in COUNTRY_CODES.items()}
     
@@ -267,9 +267,8 @@ def get_country_code(name: str) -> str:
         "united states": "US",
         "united states of america": "US",
         "usa": "US",
-        "uk": "GB",
-        "united kingdom": "GB",
-        "great britain": "GB",
+        "united kingdom": "UK",
+        "great britain": "UK",
     }
     
     # Try to find the code
@@ -284,4 +283,7 @@ def get_country_code(name: str) -> str:
 
 def get_country_name(code: str) -> str:
     """Convert a country code to its full name."""
-    return COUNTRY_CODES.get(code, code) 
+    if not code:
+        return ""
+        
+    return COUNTRY_CODES.get(code.upper(), code) 

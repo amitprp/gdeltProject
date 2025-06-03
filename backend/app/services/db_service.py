@@ -72,26 +72,25 @@ class DatabaseService:
         try:
             # Build match stage
             match_stage: Dict[str, Any] = {}
-
-            # Handle date filtering with proper timezone handling
-            if start_date or end_date:
-                date_filter = {}
-                if start_date:
-                    start_date_utc = DatabaseService._ensure_timezone_aware(start_date)
-                    if start_date_utc:
-                        start_date_utc = start_date_utc.replace(hour=0, minute=0, second=0, microsecond=0)
-                        date_filter["$gte"] = start_date_utc
-                        logger.info(f"Using start date: {start_date_utc.isoformat()}")
+                        # Ensure dates are timezone-aware
+            start = DatabaseService._ensure_timezone_aware(start_date)
+            end = DatabaseService._ensure_timezone_aware(end_date)
+            
+            logger.info(f"Getting grouped articles for field: {'country: ' + country if country else 'author: ' + (author or '')}, start_date: {start}, end_date: {end}")
+            
+            
+            pipeline: Pipeline = []
+            
+            # Only add match stage if we have date filters
+            if start or end:
+                date_filter: Dict[str, Any] = {}
+                if start:
+                    date_filter["$gte"] = start.isoformat()
+                if end:
+                    date_filter["$lte"] = end.isoformat()
                 
-                if end_date:
-                    end_date_utc = DatabaseService._ensure_timezone_aware(end_date)
-                    if end_date_utc:
-                        end_date_utc = end_date_utc.replace(hour=23, minute=59, second=59, microsecond=999999)
-                        date_filter["$lte"] = end_date_utc
-                        logger.info(f"Using end date: {end_date_utc.isoformat()}")
-                
-                if date_filter:
-                    match_stage["date.isoDate"] = date_filter
+                match_stage["date.isoDate"] = date_filter
+                logger.info(f"Added date filter to pipeline: {date_filter}")
 
             if country:
                 # Convert country name to code if it's a full name
@@ -109,7 +108,38 @@ class DatabaseService:
                 logger.info(f"Final country search value: {match_stage.get('sourceCountry')}")
 
             if author:
-                match_stage["pageAuthors"] = author
+                author_lower = author.lower()
+                match_stage["$expr"] = {
+                    "$cond": {
+                        "if": {
+                            "$or": [
+                                {"$eq": ["$pageAuthors", None]},
+                                {"$eq": ["$pageAuthors", ""]},
+                                {"$eq": ["$pageAuthors", []]}
+                            ]
+                        },
+                        "then": {"$eq": [author_lower, "unknown"]},
+                        "else": {
+                            "$cond": {
+                                "if": {"$isArray": "$pageAuthors"},
+                                "then": {
+                                    "$in": [
+                                        author_lower,
+                                        {
+                                            "$map": {
+                                                "input": "$pageAuthors",
+                                                "as": "author",
+                                                "in": {"$toLower": "$$author"}
+                                            }
+                                        }
+                                    ]
+                                },
+                                "else": {"$eq": [{"$toLower": "$pageAuthors"}, author_lower]}
+                            }
+                        }
+                    }
+                }
+                logger.info(f"Author search expression: {match_stage['$expr']}")
 
             # Log the match stage for debugging
             logger.info(f"Final match stage: {match_stage}")
@@ -123,11 +153,14 @@ class DatabaseService:
                             "country": "$sourceCountry",
                             "author": {
                                 "$cond": {
-                                    "if": {"$or": [
-                                        {"$eq": ["$pageAuthors", None]},
-                                        {"$eq": ["$pageAuthors", ""]},
-                                        {"$eq": ["$pageAuthors", []]},
-                                    ]},
+                                    "if": {
+                                        "$or": [
+                                            {"$eq": ["$pageAuthors", None]},
+                                            {"$eq": ["$pageAuthors", ""]},
+                                            {"$eq": ["$pageAuthors", []]},
+                                            {"$eq": [{"$type": "$pageAuthors"}, "missing"]}
+                                        ]
+                                    },
                                     "then": "Unknown",
                                     "else": "$pageAuthors"
                                 }
@@ -149,7 +182,20 @@ class DatabaseService:
                 {
                     "$project": {
                         "_id": 0,
-                        "source": "$_id.author",
+                        "source": {
+                            "$cond": {
+                                "if": {
+                                    "$or": [
+                                        {"$eq": ["$_id.author", None]},
+                                        {"$eq": ["$_id.author", ""]},
+                                        {"$eq": ["$_id.author", []]},
+                                        {"$eq": ["$_id.author", "Unknown"]}
+                                    ]
+                                },
+                                "then": "Unknown",
+                                "else": "$_id.author"
+                            }
+                        },
                         "country": {
                             "$cond": {
                                 "if": {"$or": [

@@ -23,6 +23,7 @@ jewwatch.egg-info/requires.txt
 jewwatch.egg-info/top_level.txt
 tests/__init__.py
 tests/conftest.py
+tests/test_endpoints.py
 tests/api/__init__.py
 tests/api/v1/__init__.py
 tests/api/v1/test_endpoints.py

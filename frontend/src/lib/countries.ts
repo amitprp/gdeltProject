@@ -219,7 +219,7 @@ export const countries: Country[] = [
   { name: "Uganda", code: "UG" },
   { name: "Ukraine", code: "UA" },
   { name: "United Arab Emirates", code: "AE" },
-  { name: "United Kingdom", code: "GB" },
+  { name: "United Kingdom", code: "UK" },
   { name: "United States", code: "US" },
   { name: "Uruguay", code: "UY" },
   { name: "Uzbekistan", code: "UZ" },
@@ -237,6 +237,8 @@ export const countries: Country[] = [
 
 // Function to get country code from name
 export function getCountryCode(name: string): string {
+  if (!name) return "";
+  
   const country = countries.find(
     (c) => c.name.toLowerCase() === name.toLowerCase()
   );
@@ -245,6 +247,8 @@ export function getCountryCode(name: string): string {
 
 // Function to get country name from code
 export function getCountryName(code: string): string {
+  if (!code) return "";
+  
   const country = countries.find(
     (c) => c.code.toLowerCase() === code.toLowerCase()
   );

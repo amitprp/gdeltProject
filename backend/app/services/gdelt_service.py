@@ -95,19 +95,6 @@ class GdeltService:
                 "total_mentions": len(articles_list)
             }
                 
-            # Calculate sentiment
-            if not articles.empty:
-                sentiment = articles.get("tone", pd.Series()).mean()
-                total_mentions = len(articles)
-            else:
-                sentiment = 0
-                total_mentions = 0
-                
-            return {
-                "articles": articles.to_dict(orient="records") if not articles.empty else [],
-                "sentiment": float(sentiment),
-                "total_mentions": total_mentions
-            }
             
         except Exception as e:
             logger.error(f"Error in get_realtime_mentions: {str(e)}")
@@ -175,31 +162,4 @@ class GdeltService:
                 "top_countries": [],
                 "top_sources": []
             }
-        try:
-            start_date = datetime.now() - timedelta(days=days)
-            
-            f = Filters(
-                keyword=["Jews", "antisemitism", "Zionism", "Israel hate"],
-                start_date=start_date
-            )
-            
-            articles = self.gd.article_search(f)
-            if articles is None:
-                return {"timeline": [], "top_sources": [], "top_countries": []}
-                
-            # Group by date for timeline
-            timeline = articles.groupby(pd.Grouper(key="datetime", freq="D")).size()
-            
-            # Get top sources and countries
-            top_sources = articles.get("source", pd.Series()).value_counts().head(10)
-            top_countries = articles.get("sourcecountry", pd.Series()).value_counts().head(10)
-            
-            return {
-                "timeline": [{"date": str(k), "count": int(v)} for k, v in timeline.items()],
-                "top_sources": [{"source": k, "count": int(v)} for k, v in top_sources.items()],
-                "top_countries": [{"country": k, "count": int(v)} for k, v in top_countries.items()]
-            }
-            
-        except Exception as e:
-            logger.error(f"Error in get_historical_data: {str(e)}")
-            return {"timeline": [], "top_sources": [], "top_countries": []}
+

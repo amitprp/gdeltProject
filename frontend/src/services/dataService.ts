@@ -50,6 +50,7 @@ export interface CountryTimeStats {
 
 export interface GroupedSourceData {
   name: string;
+  source?: string;  // Optional source field for country grouping
   articleCount: number;
   averageTone: number;
   lastArticleDate: string;
@@ -74,6 +75,7 @@ export interface SourceAnalysisFilters {
 
 export interface SourceAnalysisData {
   source: string;
+  pageAuthors?: string;  // Optional pageAuthors field
   country: string;
   articleCount: number;
   averageTone: number;
@@ -89,7 +91,7 @@ export interface SourceAnalysisData {
 // Country name mapping
 const countryNames: Record<string, string> = {
   "US": "United States",
-  "GB": "United Kingdom",
+  "UK": "United Kingdom",
   "FR": "France",
   "DE": "Germany",
   "RU": "Russia",
@@ -162,7 +164,7 @@ const countryContinents: Record<string, string> = {
   "VE": "South America",
 
   // Europe
-  "GB": "Europe",
+  "UK": "Europe",
   "FR": "Europe",
   "DE": "Europe",
   "RU": "Europe",

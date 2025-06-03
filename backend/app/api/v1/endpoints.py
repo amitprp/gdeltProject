@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Literal, Optional
-from ...services.gdelt_service import GdeltService
 from ...services.source_analysis_service import SourceAnalysisService
 from ...services.db_service import DatabaseService
 from ...models.article import Article, HistoricalData, RealtimeData, CountryData
@@ -19,63 +18,16 @@ from ...utils.country_utils import get_country_name
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-gdelt_service = GdeltService()
+
 source_analysis_service = SourceAnalysisService()
 database_service = DatabaseService()
-
-
-@router.get("/articles/recent", response_model=List[Article])
-async def get_recent_articles(days: int = 3):
-    """Get recent antisemitic articles from the last N days."""
-    if days < 0:
-        raise HTTPException(status_code=422, detail="days must be positive")
-    try:
-        articles = await gdelt_service.get_antisemitic_articles(days)
-        return articles
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/articles/realtime", response_model=RealtimeData)
-async def get_realtime_data():
-    """Get real-time article data and sentiment analysis."""
-    try:
-        data = await gdelt_service.get_realtime_mentions()
-        return data
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/articles/historical", response_model=HistoricalData)
-async def get_historical_data(days: int = 90, interval: str = "day"):
-    """Get historical data for trend analysis."""
-    if days < 0:
-        raise HTTPException(status_code=422, detail="days must be positive")
-
-    valid_intervals = ["hour", "day", "week", "month"]
-    if interval not in valid_intervals:
-        raise HTTPException(
-            status_code=422, detail=f"interval must be one of: {', '.join(valid_intervals)}"
-        )
-
-    try:
-        data = await gdelt_service.get_historical_data(days)
-        return data
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/sources/analysis", response_model=SourceAnalysisResponse)
 async def get_source_analysis(filters: SourceAnalysisFilters):
     """Get analysis of news sources with antisemitic content."""
 
     try:
+        
         sources = await source_analysis_service.get_source_statistics(
             start_date=filters.startDate,
             end_date=filters.endDate,
@@ -95,11 +47,6 @@ async def get_grouped_sources(
 ):
     """Get articles grouped by author or country."""
     try:
-        # Validate date range
-        is_valid, error_message = validate_date_range(start_date, end_date)
-        if not is_valid:
-            raise HTTPException(status_code=400, detail=error_message)
-
         sources = await source_analysis_service.get_grouped_statistics(
             group_by=group_by, start_date=start_date, end_date=end_date
         )
@@ -135,15 +82,14 @@ async def get_country_details(country_code: str):
     """Get detailed information about a specific country."""
     try:
         country_data = database_service.get_country_details(country_code)
+        country_name = get_country_name(country_code)
 
-        # If no data found, return empty stats with country info
-        if not country_data:
-            country_name = get_country_name(country_code)
-            if not country_name:
-                # Only throw 404 if the country code is invalid
-                raise HTTPException(status_code=404, detail="Country not found")
+        # If no data found and country code is invalid, return 404
+        if not country_data and not country_name:
+            raise HTTPException(status_code=404, detail="Country not found")
 
-            # Return empty stats for valid country with no articles
+        # If country exists but no data, return empty stats
+        if not country_data and country_name:
             return {
                 "code": country_code,
                 "name": country_name,
@@ -154,6 +100,8 @@ async def get_country_details(country_code: str):
 
         return country_data
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         logger.error(f"Error in get_country_details: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
