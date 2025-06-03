@@ -62,6 +62,7 @@ const SourceAnalysis = () => {
   const [displayedSources, setDisplayedSources] = useState<GroupedSourceData[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const tableRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string>();
 
   // Calculate pagination values
   const totalItems = displayedSources.length;
@@ -76,7 +77,7 @@ const SourceAnalysis = () => {
   };
 
   const fetchSources = async () => {
-    setLoading(true);
+    
     try {
       console.log('fetchSources called with:', { 
         pendingSearchTerm,
@@ -84,6 +85,20 @@ const SourceAnalysis = () => {
         startDate, 
         endDate 
       });
+      setError("");
+      const now = new Date();
+      if (startDate && endDate && startDate > endDate) {
+        setError("Start date must be before end date");
+        setLoading(false);
+        return;
+      }
+
+      if ((startDate && startDate > now) || endDate && endDate > now) {
+        setError("Dates cannot be in the future");
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
       
       if ((filterType === "country" && pendingSearchTerm) || 
           (filterType === "author" && pendingSearchTerm)) {
@@ -308,6 +323,10 @@ const SourceAnalysis = () => {
           {loading ? (
             <div className="flex justify-center items-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-red-500">{error}</p>
             </div>
           ) : displayedSources.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">

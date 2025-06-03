@@ -108,21 +108,34 @@ class DatabaseService:
                 logger.info(f"Final country search value: {match_stage.get('sourceCountry')}")
 
             if author:
+                author_lower = author.lower()
                 match_stage["$expr"] = {
                     "$cond": {
-                        "if": {"$eq": ["$pageAuthors", None]},
-                        "then": {"$eq": [author.lower(), "unknown"]},
-                        "else": {
-                            "$in": [
-                                author.lower(),
-                                {
-                                    "$map": {
-                                        "input": "$pageAuthors",
-                                        "as": "author",
-                                        "in": {"$toLower": "$$author"}
-                                    }
-                                }
+                        "if": {
+                            "$or": [
+                                {"$eq": ["$pageAuthors", None]},
+                                {"$eq": ["$pageAuthors", ""]},
+                                {"$eq": ["$pageAuthors", []]}
                             ]
+                        },
+                        "then": {"$eq": [author_lower, "unknown"]},
+                        "else": {
+                            "$cond": {
+                                "if": {"$isArray": "$pageAuthors"},
+                                "then": {
+                                    "$in": [
+                                        author_lower,
+                                        {
+                                            "$map": {
+                                                "input": "$pageAuthors",
+                                                "as": "author",
+                                                "in": {"$toLower": "$$author"}
+                                            }
+                                        }
+                                    ]
+                                },
+                                "else": {"$eq": [{"$toLower": "$pageAuthors"}, author_lower]}
+                            }
                         }
                     }
                 }
@@ -140,11 +153,14 @@ class DatabaseService:
                             "country": "$sourceCountry",
                             "author": {
                                 "$cond": {
-                                    "if": {"$or": [
-                                        {"$eq": ["$pageAuthors", None]},
-                                        {"$eq": ["$pageAuthors", ""]},
-                                        {"$eq": ["$pageAuthors", []]},
-                                    ]},
+                                    "if": {
+                                        "$or": [
+                                            {"$eq": ["$pageAuthors", None]},
+                                            {"$eq": ["$pageAuthors", ""]},
+                                            {"$eq": ["$pageAuthors", []]},
+                                            {"$eq": [{"$type": "$pageAuthors"}, "missing"]}
+                                        ]
+                                    },
                                     "then": "Unknown",
                                     "else": "$pageAuthors"
                                 }
@@ -166,7 +182,20 @@ class DatabaseService:
                 {
                     "$project": {
                         "_id": 0,
-                        "source": "$_id.author",
+                        "source": {
+                            "$cond": {
+                                "if": {
+                                    "$or": [
+                                        {"$eq": ["$_id.author", None]},
+                                        {"$eq": ["$_id.author", ""]},
+                                        {"$eq": ["$_id.author", []]},
+                                        {"$eq": ["$_id.author", "Unknown"]}
+                                    ]
+                                },
+                                "then": "Unknown",
+                                "else": "$_id.author"
+                            }
+                        },
                         "country": {
                             "$cond": {
                                 "if": {"$or": [
