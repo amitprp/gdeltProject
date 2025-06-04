@@ -33,6 +33,18 @@
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       }
+    },
+    {
+      "name": "data_extraction",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/scripts/data_extraction/data_extraction_script.py",
+      // "console": "integratedTerminal",
+      "justMyCode": false,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
     }
   ]
 }

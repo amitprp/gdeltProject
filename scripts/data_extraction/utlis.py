@@ -1,11 +1,12 @@
-import gdelt
-from datetime import datetime
 import re
 import pandas as pd
-import os
+from datetime import datetime
 import json
-from pymongo import MongoClient
-from datetime import datetime, timedelta
+from typing import Dict, List
+from data.mapping_data.classification_data import against_israel_themes, against_israel_keywords
+from constants import TONE_WEIGHTS, THEME_WEIGHT, KEYWORD_WEIGHT, CLASSIFICATION_THRESHOLD, gd, url_to_country
+from backend.app.core.database import db
+
 
 
 def get_page_title(t):
@@ -26,7 +27,12 @@ def get_page_author(t):
         if len(l) == 0:
             return None
         authors = l[0].split(";")
-        return authors if authors != [""] else None
+        # Filter out empty strings and validate author names
+        valid_authors = []
+        for author in authors:
+            if author and re.match(r'^[A-Za-z\s\',-]+$', author.strip()):
+                valid_authors.append(author.strip())
+        return valid_authors if valid_authors else None
     except:
         return None
 
@@ -48,29 +54,6 @@ def parse_v2tone(tone_string):
         return None
 
 
-# Function to load URL to country mapping
-def load_url_to_country_mapping(file_path):
-    url_to_country = {}
-    country_code_to_name = {}
-
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            for line in f:
-                parts = line.strip().split("\t")
-                if len(parts) >= 3:
-                    domain = parts[0].strip()
-                    country_code = parts[1].strip()
-                    country_name = parts[2].strip()
-
-                    url_to_country[domain] = country_code
-                    country_code_to_name[country_code] = country_name
-
-    except Exception as e:
-        print(f"Error loading URL to country mapping: {e}")
-
-    return url_to_country, country_code_to_name
-
-
 # Function to extract domain from URL
 def extract_domain(url):
     if not url:
@@ -89,22 +72,21 @@ def extract_domain(url):
 
     return url
 
-
 # Function to get country from URL
 def get_country_from_url(url, url_to_country, country_code_to_name):
     if not url:
-        return "Unknown"
+        return None
 
     domain = extract_domain(url)
     if not domain:
-        return "Unknown"
+        return None
 
     # Try to find the country code for the domain
     country_code = url_to_country.get(domain)
     if country_code:
         return country_code_to_name.get(country_code, country_code)
 
-    return "Unknown"
+    return None
 
 
 def contains_keywords(field, keywords):
@@ -113,7 +95,7 @@ def contains_keywords(field, keywords):
     return any(k.lower() in field.lower() for k in keywords)
 
 
-def extract_gdelt_data(gd, start_date, end_date):
+def extract_gdelt_data(start_date, end_date):
 
     start_date = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
     end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
@@ -126,7 +108,7 @@ def extract_gdelt_data(gd, start_date, end_date):
     return results
 
 
-def refactor_data_df(results, url_to_country):
+def refactor_data_df(results):
 
     df = results[
         [
@@ -173,6 +155,8 @@ def refactor_data_df(results, url_to_country):
             # or bool(re.search(r"(?i)(anti.?sem|anti.?jew|anti.?zion|gaza.?gen)", str(x)))
         )
     ]
+    
+    filtered = filtered.copy()
 
     # Extract title, URL and author
     filtered["PageTitle"] = df["PageTitle"]
@@ -276,81 +260,139 @@ def get_latest_event_time(db):
         return None
 
 
-def main():
+def compute_sentiment_score(tones: Dict[str, float]) -> float:
+    """
+    Computes a weighted score based on tone values.
+    Higher score = higher likelihood of negative bias toward Israel.
+    Score is normalized between 0 and 10.
+
+    Parameters:
+        tones (dict): Dictionary containing tone metrics like 'overall', 'positive', 'negative', etc.
+
+    Returns:
+        float: Normalized weighted sentiment score between 0 and 10
+    """
+    score = 0.0
+    for key, weight in TONE_WEIGHTS.items():
+        value = tones.get(key, 0.0)
+        score += value * weight
+
+    # Normalize score to 0-10 range
+    # Assuming max possible score is 20 (based on weights)
+    normalized_score = min(max(score, 0), 20) / 2
+    return normalized_score
+
+
+def extract_theme_ids(theme_str: str) -> List[str]:
+    """
+    Extracts theme tags (like CRISISLEX_xxx, WB_yyy) from a long theme string.
+
+    Parameters:
+        theme_str (str): Raw themes string from article
+
+    Returns:
+        List[str]: List of normalized theme codes
+    """
+    if not theme_str:
+        return []
+    return re.findall(r"[A-Z_]+", theme_str)
+
+
+def theme_score(theme_str: str, against_themes: List[str]) -> float:
+    """
+    Scores the article based on matching themes that are considered anti-Israel.
+    Score is normalized between 0 and 10.
+
+    Parameters:
+        theme_str (str): Raw themes string from article
+        against_themes (list): List of themes considered 'against Israel'
+
+    Returns:
+        float: Normalized score based on theme matches between 0 and 10
+    """
+    themes = extract_theme_ids(theme_str)
+    hits = sum(1 for theme in themes if theme in against_themes)
+    raw_score = hits * THEME_WEIGHT
+
+    # Normalize score to 0-10 range
+    # Assuming max possible themes is 5
+    normalized_score = min(hits, 5) * 2
+    return normalized_score
+
+
+def keyword_score(text: str, keywords: List[str]) -> float:
+    """
+    Scores the article based on the presence of specific anti-Israel keywords.
+    Score is normalized between 0 and 10.
+
+    Parameters:
+        text (str): Combined page title and URL
+        keywords (list): List of keywords considered 'against Israel'
+
+    Returns:
+        float: Normalized score based on keyword matches between 0 and 10
+    """
+    text_lower = text.lower()
+    hits = sum(1 for kw in keywords if kw.lower() in text_lower)
+    raw_score = hits * KEYWORD_WEIGHT
+
+    # Normalize score to 0-10 range
+    # Assuming max possible keywords is 5
+    normalized_score = min(hits, 5) * 2
+    return normalized_score
+
+
+def classify_article(text: str, tones: Dict[str, float], theme_str: str) -> bool:
+    """
+    Combines tone score, theme score, and keyword score to classify the article.
+    All scores are normalized between 0 and 10, with a total possible score of 30.
+
+    Parameters:
+        text (str): Article's title + URL
+        tones (dict): Tone scores
+        theme_str (str): Themes string
+
+    Returns:
+        bool: True if article is suspected to be against Israel (isAgainstIsrael = True)
+    """
+    # Get normalized scores (0-10 each)
+    tone_score = compute_sentiment_score(tones)
+    theme_score_val = theme_score(theme_str, against_israel_themes)
+    keyword_score_val = keyword_score(text, against_israel_keywords)
+
+    # Calculate final score (0-30 range)
+    final_score = tone_score + theme_score_val + keyword_score_val
+
+    # Normalize to 0-10 range
+    normalized_final_score = final_score / 3
+
+    return normalized_final_score >= CLASSIFICATION_THRESHOLD
+
+
+def filter_articles(articles):
+    return [article for article in articles if article['pageAuthors'] != None and article['sourceCountry'] != None]
+
+def extract_classified_articles(start_date, end_date):
+    
+    print(f"Extracting data from {start_date} to {end_date}")
+
     try:
-        client = MongoClient("mongodb://localhost:27017/")
-        db = client["JewWatch"]
-    except Exception:
-        db = ""
+        gdelt_data = extract_gdelt_data(start_date, end_date)
+        refactored_gdelt_data = refactor_data_df(gdelt_data)
+        print(f"Found {len(refactored_gdelt_data)} matching articles")
 
-    # Load URL to country mapping
-    url_to_country, country_code_to_name = load_url_to_country_mapping("url-to-country-mapping.txt")
-    print(f"Loaded {len(url_to_country)} URL to country mappings")
+        if len(refactored_gdelt_data) > 0:
+            articles_json = create_mongo_docs(refactored_gdelt_data)
+            articles = filter_articles(articles_json)
+            is_inserted = insert_to_mongo(articles, db, "articles")
+            save_docs_event = create_save_docs_event(len(articles), end_date, is_inserted)
+            insert_to_mongo(save_docs_event, db, "events")
+            if is_inserted:
+                print(f"Inserted {len(articles)} documents into MongoDB")
+            else:
+                print("Failed to insert documents into MongoDB")
 
-    gd = gdelt.gdelt(version=2)
+            print(f"Saved data to mongodb")
 
-    # Get dates for the past year or from last extraction
-    end = datetime.now()
-    latest_event_time = get_latest_event_time(db)
-    start = latest_event_time if latest_event_time else (end - timedelta(days=365))
-
-    print(f"Starting extraction from {start} to {end}")
-
-    # Loop through each day
-    current_date = start
-    while current_date < end:
-        start_date = current_date.strftime("%Y-%m-%d %H:%M:%S")
-        next_date = current_date + timedelta(days=1)
-        end_date = min(next_date, end).strftime("%Y-%m-%d %H:%M:%S")
-
-        print(f"Extracting data from {start_date} to {end_date}")
-
-        try:
-            results = extract_gdelt_data(gd, start_date, end_date)
-            result_df = refactor_data_df(results, url_to_country)
-            print(f"Found {len(result_df)} matching articles")
-
-            if len(result_df) > 0:
-                mongo_docs = create_mongo_docs(result_df)
-                is_inserted = insert_to_mongo(mongo_docs, db, "articles")
-                save_docs_event = create_save_docs_event(len(mongo_docs), end_date, is_inserted)
-                insert_to_mongo(save_docs_event, db, "events")
-                if is_inserted:
-                    print(f"Inserted {len(mongo_docs)} documents into MongoDB")
-                else:
-                    print("Failed to insert documents into MongoDB")
-
-                print(f"Saved data to mongodb")
-
-        except Exception as e:
-            print(f"Error processing data for {start_date}: {str(e)}")
-
-        current_date = next_date
-
-
-if __name__ == "__main__":
-    main()
-
-
-# Overall Tone (first number): 2.25890529973936
-# This is the main sentiment score
-# Positive values indicate positive sentiment
-# Negative values indicate negative sentiment
-# The magnitude indicates the strength of the sentiment
-# Positive Tone (second number): 4.77845351867941
-# Measures the positive aspects of the text
-# Higher values indicate more positive language
-# Negative Tone (third number): 2.51954821894005
-# Measures the negative aspects of the text
-# Higher values indicate more negative language
-# Polarity (fourth number): 7.29800173761946
-# The difference between positive and negative tone
-# Indicates how polarized the text is
-# Activity (fifth number): 20.9383145091225
-# Measures the level of activity or action in the text
-# Higher values indicate more active/energetic language
-# Emotionality (sixth number): 1.30321459600348
-# Measures the emotional intensity of the text
-# Higher values indicate more emotional language
-# Word Count (seventh number): 1026
-# The number of words analyzed in the text
+    except Exception as e:
+        print(f"Error processing data for {start_date}: {str(e)}")
