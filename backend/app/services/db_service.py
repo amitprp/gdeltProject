@@ -805,3 +805,74 @@ class DatabaseService:
                     "dailyData": [],
                 },
             ]
+
+    @staticmethod
+    def get_daily_country_averages() -> dict:
+        """Get daily average of articles for top and bottom countries."""
+        try:
+            # Get all countries with their averages
+            pipeline = [
+                {"$match": {"sourceCountry": {"$exists": True, "$ne": None, "$ne": ""}}},
+                {
+                    "$group": {
+                        "_id": {
+                            "country": "$sourceCountry",
+                            "date": {
+                                "$dateToString": {
+                                    "format": "%Y-%m-%d",
+                                    "date": {
+                                        "$dateFromString": {
+                                            "dateString": "$date.isoDate",
+                                            "timezone": "UTC"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "dailyCount": {"$sum": 1}
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": "$_id.country",
+                        "averageArticles": {"$avg": "$dailyCount"},
+                        "totalDays": {"$sum": 1}
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 0,
+                        "country": "$_id",
+                        "averageArticles": {"$round": ["$averageArticles", 2]},
+                        "totalDays": 1
+                    }
+                }
+            ]
+            
+            results = DatabaseService.aggregate_articles(pipeline)
+            
+            # Convert country codes to names and filter out zero averages
+            formatted_results = []
+            for result in results:
+                country_name = get_country_name(result["country"])
+                if country_name and result["averageArticles"] > 0:
+                    result["name"] = country_name
+                    formatted_results.append(result)
+            
+            # Sort for highest and lowest
+            sorted_results = sorted(formatted_results, key=lambda x: x["averageArticles"], reverse=True)
+            highest = sorted_results[:7]
+            lowest = sorted_results[-7:] if len(sorted_results) >= 7 else sorted_results
+            lowest.reverse()  # Make it ascending order
+            
+            return {
+                "highest": highest,
+                "lowest": lowest
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting daily country averages: {str(e)}")
+            return {
+                "highest": [],
+                "lowest": []
+            }

@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import WorldMap from '@/components/WorldMap';
 import ContinentChart from '@/components/ContinentChart';
 import TopCountriesChart from '@/components/TopCountriesChart';
+import DailyAveragesChart from '@/components/DailyAveragesChart';
 import GlobalStatsCard from '@/components/GlobalStats';
-import { getGlobalStats, GlobalStats } from '@/services/dataService';
+import { getGlobalStats, getDailyAverages, GlobalStats, DailyAverageResponse } from '@/services/dataService';
 import { Loader2, ChartBarIcon, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
@@ -12,19 +13,25 @@ import { AlertTriangle } from 'lucide-react';
 const Index = () => {
   const navigate = useNavigate();
   const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
+  const [dailyAverages, setDailyAverages] = useState<DailyAverageResponse>({ highest: [], lowest: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('Fetching global stats...');
-        const data = await getGlobalStats();
-        console.log('Received global stats:', data);
-        setGlobalStats(data);
+        console.log('Fetching data...');
+        const [statsData, averagesData] = await Promise.all([
+          getGlobalStats(),
+          getDailyAverages()
+        ]);
+        console.log('Received global stats:', statsData);
+        console.log('Received daily averages:', averagesData);
+        setGlobalStats(statsData);
+        setDailyAverages(averagesData);
         setError(null);
       } catch (error) {
-        console.error("Error fetching global stats:", error);
+        console.error("Error fetching data:", error);
         setError("Failed to load dashboard data. Please try again later.");
       } finally {
         setLoading(false);
@@ -111,6 +118,16 @@ const Index = () => {
         <div>
           <h2 className="text-xl font-semibold mb-4">Top Countries</h2>
           <TopCountriesChart data={globalStats.topCountries} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Daily Average by Country</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Average number of antisemitic articles published daily. Toggle between highest and lowest averages.
+          </p>
+          <DailyAveragesChart data={dailyAverages} />
         </div>
       </div>
     </div>
