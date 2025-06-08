@@ -25,8 +25,8 @@ def main():
     # start = latest_event_time if latest_event_time else datetime(2021, 1, 1)
     
     # Set specific dates for extraction
-    start = datetime(2025, 5, 5)
-    end = datetime(2025, 5, 7)
+    start = datetime(2021, 1, 1)
+    end = datetime(2021, 1, 31)
 
     print(f"Starting extraction from {start} to {end}")
 
