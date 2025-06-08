@@ -14,21 +14,25 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
+  Legend,
+  ReferenceArea,
+  ReferenceLine,
+  Brush
 } from 'recharts';
 
 // Add interface for raw timeline data item from API
 interface RawTimelineItem {
   date: string;
   count: number;
-  tone?: number | null;
+  tone: number;  // This comes from tones.overall in MongoDB
 }
 
 // Add interface for timeline data item
 interface TimelineDataItem {
   date: string;
   count: number;
-  tone?: number;
+  tone: number;
 }
 
 // Add interface for article data
@@ -196,11 +200,9 @@ const CountryDetail: React.FC = () => {
               }
               const timelineItem: TimelineDataItem = {
                 date: item.date,
-                count: Number(item.count)
+                count: Number(item.count),
+                tone: Number(item.tone || 0)
               };
-              if ('tone' in item && item.tone !== null) {
-                timelineItem.tone = Number(item.tone);
-              }
               return timelineItem;
             })
             .filter((item): item is TimelineDataItem => item !== null);
@@ -218,8 +220,8 @@ const CountryDetail: React.FC = () => {
         const emptyStats = {
           articleCount: 0,
           averageTone: 0,
-          timelineData: [],
-          articles: []
+          timelineData: [] as TimelineDataItem[],
+          articles: [] as ArticleData[]
         };
         setTimeStats(emptyStats);
         if (isInitialFetch) {
@@ -234,8 +236,8 @@ const CountryDetail: React.FC = () => {
         const emptyStats = {
           articleCount: 0,
           averageTone: 0,
-          timelineData: [],
-          articles: []
+          timelineData: [] as TimelineDataItem[],
+          articles: [] as ArticleData[]
         };
         setTimeStats(emptyStats);
         if (isInitialFetch) {
@@ -447,16 +449,102 @@ const CountryDetail: React.FC = () => {
                 <CardContent>
                   <div className="h-[300px]" ref={chartRef}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={timeStats.timelineData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip />
+                      <LineChart
+                        data={timeStats.timelineData}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fill: '#6B7280' }}
+                          tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                        />
+                        <YAxis 
+                          yAxisId="left" 
+                          tick={{ fill: '#6B7280' }}
+                          label={{ 
+                            value: 'Number of Articles', 
+                            angle: -90, 
+                            position: 'insideLeft',
+                            style: { fill: '#6B7280' }
+                          }} 
+                        />
+                        <YAxis 
+                          yAxisId="right" 
+                          orientation="right"
+                          tick={{ fill: '#6B7280' }}
+                          label={{ 
+                            value: 'Average Tone', 
+                            angle: 90, 
+                            position: 'insideRight',
+                            style: { fill: '#6B7280' }
+                          }} 
+                        />
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: 'rgba(17, 24, 39, 0.8)',
+                            border: '1px solid #374151',
+                            borderRadius: '6px',
+                            color: '#F3F4F6'
+                          }}
+                          formatter={(value: number, name: string) => {
+                            if (name === 'Articles') return [`${value} articles`, name];
+                            if (name === 'Tone') {
+                              const color = value >= 0 ? '#10B981' : '#EF4444';
+                              return [
+                                <span style={{ color }}>
+                                  {value.toFixed(2)}
+                                </span>,
+                                'Tone'
+                              ];
+                            }
+                            return [value, name];
+                          }}
+                          labelFormatter={(label) => new Date(label).toLocaleDateString(undefined, {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        />
+                        <Legend 
+                          verticalAlign="top" 
+                          height={36}
+                          wrapperStyle={{
+                            paddingBottom: '20px'
+                          }}
+                        />
+                        <ReferenceLine 
+                          y={0} 
+                          yAxisId="right"
+                          stroke="#374151" 
+                          strokeDasharray="3 3"
+                        />
                         <Line
+                          yAxisId="left"
                           type="monotone"
                           dataKey="count"
+                          name="Articles"
                           stroke="#2563eb"
                           strokeWidth={2}
+                          dot={false}
+                          activeDot={{ r: 6 }}
+                        />
+                        <Line
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="tone"
+                          name="Tone"
+                          stroke="#10b981"
+                          strokeWidth={2}
+                          dot={false}
+                          activeDot={{ r: 6 }}
+                        />
+                        <Brush 
+                          dataKey="date"
+                          height={30}
+                          stroke="#374151"
+                          tickFormatter={(value) => new Date(value).toLocaleDateString()}
                         />
                       </LineChart>
                     </ResponsiveContainer>

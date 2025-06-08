@@ -36,15 +36,16 @@ export interface GlobalStats {
 export interface CountryTimeStats {
   articleCount: number;
   averageTone: number;
+  timelineData: {
+    date: string;
+    count: number;
+    tone: number;
+  }[];
   articles: {
     title: string;
     date: string;
     source: string;
     url: string;
-  }[];
-  timelineData: {
-    date: string;
-    count: number;
   }[];
 }
 
@@ -86,6 +87,18 @@ export interface SourceAnalysisData {
     date: string;
     tone: number;
   }[];
+}
+
+export interface DailyAverageData {
+  country: string;
+  name: string;
+  averageArticles: number;
+  totalDays: number;
+}
+
+export interface DailyAverageResponse {
+  highest: DailyAverageData[];
+  lowest: DailyAverageData[];
 }
 
 // Country name mapping
@@ -478,8 +491,8 @@ export const getCountryTimeStats = async (
     return {
       articleCount: 0,
       averageTone: 0,
-      articles: [],
-      timelineData: []
+      timelineData: [],
+      articles: []
     };
   }
 };
@@ -570,5 +583,23 @@ export const getTopCountries = async (): Promise<CountryData[]> => {
   } catch (error) {
     console.error('Error fetching top countries:', error);
     return [];
+  }
+};
+
+export const getDailyAverages = async (): Promise<DailyAverageResponse> => {
+  try {
+    const response = await fetch('/api/v1/articles/daily-averages');
+    if (!response.ok) {
+      throw new Error('Failed to fetch daily averages');
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching daily averages:', error);
+    return {
+      highest: [],
+      lowest: []
+    };
   }
 };

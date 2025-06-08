@@ -1,6 +1,5 @@
-AGGREGATIONS = [
-    {
-        "name": "ARTICLES_BY_SOURCE",
+AGGREGATIONS = {
+    "ARTICLES_BY_SOURCE": {
         "pipeline": [
             # This pipeline requires dynamic 'match_stage' built in db_service.py
             {"$match": "<MATCH_STAGE>"},
@@ -74,8 +73,7 @@ AGGREGATIONS = [
             {"$sort": {"articleCount": -1}},
         ],
     },
-    {
-        "name": "GROUPED_ARTICLES",
+    "GROUPED_ARTICLES": {
         "pipeline": [
             # This pipeline requires dynamic 'group_field' and date filters
             {"$match": "<DATE_MATCH_STAGE>"},
@@ -135,8 +133,7 @@ AGGREGATIONS = [
             {"$sort": {"articleCount": -1}},
         ],
     },
-    {
-        "name": "TOP_COUNTRIES_BY_ARTICLES",
+    "TOP_COUNTRIES_BY_ARTICLES": {
         "pipeline": [
             {"$match": "<MATCH_STAGE>"},
             {"$match": {"sourceCountry": {"$exists": True, "$ne": None, "$ne": ""}}},
@@ -159,12 +156,10 @@ AGGREGATIONS = [
             {"$limit": "<LIMIT>"},
         ],
     },
-    {
-        "name": "GLOBAL_STATISTICS_TOTAL",
+    "GLOBAL_STATISTICS_TOTAL": {
         "pipeline": [{"$group": {"_id": None, "total": {"$sum": 1}}}],
     },
-    {
-        "name": "GLOBAL_STATISTICS_COUNTRIES",
+    "GLOBAL_STATISTICS_COUNTRIES": {
         "pipeline": [
             {"$match": {"sourceCountry": {"$exists": True, "$ne": None, "$ne": ""}}},
             {
@@ -186,8 +181,7 @@ AGGREGATIONS = [
             {"$sort": {"value": -1}},
         ],
     },
-    {
-        "name": "COUNTRY_DETAILS",
+    "COUNTRY_DETAILS": {
         "pipeline": [
             {"$match": {"sourceCountry": "<COUNTRY_CODE>"}},
             {
@@ -207,8 +201,7 @@ AGGREGATIONS = [
             },
         ],
     },
-    {
-        "name": "COUNTRY_TIME_STATS_TIMELINE",
+    "COUNTRY_TIME_STATS_TIMELINE": {
         "pipeline": [
             {"$match": "<MATCH_STAGE>"},
             {
@@ -242,8 +235,7 @@ AGGREGATIONS = [
             {"$sort": {"date": 1}},
         ],
     },
-    {
-        "name": "COUNTRY_TIME_STATS_STATS",
+    "COUNTRY_TIME_STATS_STATS": {
         "pipeline": [
             {"$match": "<MATCH_STAGE>"},
             {
@@ -287,8 +279,7 @@ AGGREGATIONS = [
             },
         ],
     },
-    {
-        "name": "COMPARE_TIME_PERIODS",
+    "COMPARE_TIME_PERIODS": {
         "pipeline": [
             {"$match": {"date.isoDate": {"$gte": "<START_DATE>", "$lte": "<END_DATE>"}}},
             {
@@ -325,15 +316,52 @@ AGGREGATIONS = [
             {"$sort": {"date": 1}},
         ],
     },
-]
+    "DAILY_COUNTRY_AVERAGES": {
+        "pipeline": [
+            {"$match": {"sourceCountry": {"$exists": True, "$ne": None, "$ne": ""}}},
+            {
+                "$group": {
+                    "_id": {
+                        "country": "$sourceCountry",
+                        "date": {
+                            "$dateToString": {
+                                "format": "%Y-%m-%d",
+                                "date": {
+                                    "$dateFromString": {
+                                        "dateString": "$date.isoDate",
+                                        "timezone": "UTC"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "dailyCount": {"$sum": 1}
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$_id.country",
+                    "averageArticles": {"$avg": "$dailyCount"},
+                    "totalDays": {"$sum": 1}
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "country": "$_id",
+                    "averageArticles": {"$round": ["$averageArticles", 2]},
+                    "totalDays": 1
+                }
+            }
+        ]
+    }
+}
 
-FILTERS = [
-    {
-        "name": "DATE_RANGE_FILTER",
+FILTERS = {
+    "DATE_RANGE_FILTER": {
         "filter": {"date.isoDate": {"$gte": "<START_DATE>", "$lte": "<END_DATE>"}},
     },
-    {
-        "name": "AUTHOR_FILTER",
+    "AUTHOR_FILTER": {
         "filter": {
             "$expr": {
                 "$cond": {
@@ -367,7 +395,13 @@ FILTERS = [
             }
         },
     },
-    {"name": "COUNTRY_FILTER", "filter": {"sourceCountry": "<COUNTRY_CODE>"}},
-    {"name": "DATE_ONLY_GTE_FILTER", "filter": {"date.isoDate": {"$gte": "<START_DATE>"}}},
-    {"name": "DATE_ONLY_LTE_FILTER", "filter": {"date.isoDate": {"$lte": "<END_DATE>"}}},
-]
+    "COUNTRY_FILTER": {
+        "filter": {"sourceCountry": "<COUNTRY_CODE>"},
+    },
+    "DATE_ONLY_GTE_FILTER": {
+        "filter": {"date.isoDate": {"$gte": "<START_DATE>"}},
+    },
+    "DATE_ONLY_LTE_FILTER": {
+        "filter": {"date.isoDate": {"$lte": "<END_DATE>"}},
+    },
+}

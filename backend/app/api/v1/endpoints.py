@@ -178,3 +178,16 @@ async def compare_trends(request: TimeFrameRequest):
     except Exception as e:
         logger.error(f"Error in compare_trends: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/articles/daily-averages")
+async def get_daily_averages():
+    """Get daily average of articles for top countries."""
+    try:
+        stats = database_service.get_daily_country_averages()
+        return stats
+    except Exception as e:
+        logger.error(f"Error in get_daily_averages: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail="An error occurred while fetching daily averages"
+        )
