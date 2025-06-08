@@ -1,10 +1,10 @@
 import re
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from typing import Dict, List
 from data.mapping_data.classification_data import against_israel_themes, against_israel_keywords
-from constants import TONE_WEIGHTS, THEME_WEIGHT, KEYWORD_WEIGHT, CLASSIFICATION_THRESHOLD, gd, url_to_country
+from .constants import TONE_WEIGHTS, THEME_WEIGHT, KEYWORD_WEIGHT, CLASSIFICATION_THRESHOLD, ARTICLES_COLLECTION, EVENTS_COLLECTION, gd, url_to_country
 from backend.app.core.database import db
 
 
@@ -96,9 +96,12 @@ def contains_keywords(field, keywords):
 
 
 def extract_gdelt_data(start_date, end_date):
-
-    start_date = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
-    end_date = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
+    # Convert to string if datetime object is passed
+    if isinstance(start_date, datetime):
+        start_date = start_date.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(end_date, datetime):
+        end_date = end_date.strftime("%Y-%m-%d %H:%M:%S")
+        
     results = gd.Search(
         ["{}".format(start_date), "{}".format(end_date)],
         table="gkg",
@@ -250,7 +253,7 @@ def get_latest_event_time(db):
                 events = json.load(f)
             latest_event = max(events, key=lambda x: x["eventTime"])
         else:
-            collection = db["events"]
+            collection = db[EVENTS_COLLECTION]
             latest_event = collection.find_one({"eventType": "save_docs"}, sort=[("eventTime", -1)])
         if latest_event:
             return datetime.fromisoformat(latest_event["eventTime"].replace("Z", "+00:00"))
@@ -384,9 +387,13 @@ def extract_classified_articles(start_date, end_date):
         if len(refactored_gdelt_data) > 0:
             articles_json = create_mongo_docs(refactored_gdelt_data)
             articles = filter_articles(articles_json)
-            is_inserted = insert_to_mongo(articles, db, "articles")
+            for article in articles:
+                classification = classify_article(article["pageTitle"], article["tones"], article["themes"])
+                article["isAgainstIsrael"] = classification
+
+            is_inserted = insert_to_mongo(articles, db, ARTICLES_COLLECTION)
             save_docs_event = create_save_docs_event(len(articles), end_date, is_inserted)
-            insert_to_mongo(save_docs_event, db, "events")
+            insert_to_mongo(save_docs_event, db, EVENTS_COLLECTION)
             if is_inserted:
                 print(f"Inserted {len(articles)} documents into MongoDB")
             else:
@@ -396,3 +403,22 @@ def extract_classified_articles(start_date, end_date):
 
     except Exception as e:
         print(f"Error processing data for {start_date}: {str(e)}")
+
+"""
+This function is used to extract data per day, for a range of dates.
+Date is an object of type datetime, where the format is YYYY-MM-DD HH:MM:SS
+"""
+def per_day_extraction(start, end):
+
+    print(f"Starting extraction from {start} to {end}")
+
+    # Loop through each day
+    current_date = start
+    while current_date < end:
+        start_date = current_date.strftime("%Y-%m-%d %H:%M:%S")
+        next_date = current_date + timedelta(days=1)
+        end_date = min(next_date, end).strftime("%Y-%m-%d %H:%M:%S")
+
+        extract_classified_articles(start_date, end_date)
+
+        current_date = next_date

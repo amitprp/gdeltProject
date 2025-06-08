@@ -9,6 +9,9 @@ TONE_WEIGHTS = {
     "activity": 0.2,  # Less important, but included to reflect energy in the language
 }
 
+ARTICLES_COLLECTION="articles_test"
+EVENTS_COLLECTION="events_test"
+
 THEME_WEIGHT = 1.0  # Weight per matching theme
 KEYWORD_WEIGHT = 2.0  # Weight per matching keyword
 CLASSIFICATION_THRESHOLD = 7.0  # Final score threshold for classifying as 'against Israel'

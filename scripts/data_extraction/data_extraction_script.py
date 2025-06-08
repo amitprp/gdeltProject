@@ -14,6 +14,7 @@ from utlis import (
     insert_to_mongo,
     create_save_docs_event,
     extract_classified_articles,
+    per_day_extraction,
 )
 from backend.app.core.database import db
 
@@ -25,25 +26,15 @@ def main():
     # start = latest_event_time if latest_event_time else datetime(2021, 1, 1)
     
     # Set specific dates for extraction
-    start = datetime(2021, 1, 1)
-    end = datetime(2021, 1, 31)
+    start = datetime(2024, 1, 1)
+    end = datetime(2024, 1, 4)
 
-    print(f"Starting extraction from {start} to {end}")
+    per_day_extraction(start, end)
 
-    # Loop through each day
-    current_date = start
-    while current_date < end:
-        start_date = current_date.strftime("%Y-%m-%d %H:%M:%S")
-        next_date = current_date + timedelta(days=1)
-        end_date = min(next_date, end).strftime("%Y-%m-%d %H:%M:%S")
 
-        extract_classified_articles(start_date, end_date)
-
-        current_date = next_date
 
 if __name__ == "__main__":
     main()
-
 
 # Overall Tone (first number): 2.25890529973936
 # This is the main sentiment score

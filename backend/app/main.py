@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .api.v1.endpoints import router as api_router
+from .services.gdelt_extraction_service import GdeltExtractionService
 import logging
 
 # Configure logging
@@ -32,6 +33,16 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(api_router, prefix="/api/v1")
+
+# Initialize GdeltExtractionService
+gdelt_service = None
+
+@app.on_event("startup")
+async def startup_event():
+    global gdelt_service
+    logger.info("Initializing GdeltExtractionService...")
+    gdelt_service = GdeltExtractionService()
+    logger.info("GdeltExtractionService initialized successfully")
 
 @app.get("/")
 async def root():
