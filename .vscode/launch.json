@@ -1,6 +1,7 @@
 {
   "version": "0.2.0",
   "configurations": [
+    
     {
       "name": "Python: FastAPI",
       "type": "debugpy",
@@ -17,6 +18,7 @@
       ],
       "jinja": true,
       "justMyCode": false,
+      "python": "${command:python.interpreterPath}",
       "env": {
         "PYTHONPATH": "${workspaceFolder}/backend"
       },
@@ -30,6 +32,7 @@
       "program": "${workspaceFolder}/scripts/classify_and_upsert_articles.py",
       "console": "integratedTerminal",
       "justMyCode": false,
+      "python": "${command:python.interpreterPath}",
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       }
@@ -40,11 +43,27 @@
       "request": "launch",
       "cwd": "${workspaceFolder}",
       "program": "${workspaceFolder}/scripts/data_extraction/data_extraction_script.py",
-      // "console": "integratedTerminal",
+      "console": "integratedTerminal",
       "justMyCode": false,
+      "python": "${command:python.interpreterPath}",
       "env": {
         "PYTHONPATH": "${workspaceFolder}"
       }
+    },
+    {
+      "name": "run backend",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/backend",
+      "program": "${workspaceFolder}/backend/env/Lib/site-packages/uvicorn",
+      "args": ["app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"],
+      "jinja": true,
+      "justMyCode": false,
+      "python": "${command:python.interpreterPath}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/backend"
+      },
+      "envFile": "${workspaceFolder}/backend/.env"
     }
   ]
 }
