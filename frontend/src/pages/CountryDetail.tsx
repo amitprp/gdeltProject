@@ -208,6 +208,18 @@ const CountryDetail: React.FC = () => {
             .filter((item): item is TimelineDataItem => item !== null);
           console.log('Processed timeline data:', timeStatsData.timelineData);
         }
+
+        // Ensure unique articles by title
+        if (timeStatsData.articles) {
+          const uniqueArticles = new Map();
+          timeStatsData.articles = timeStatsData.articles.filter(article => {
+            if (uniqueArticles.has(article.title)) {
+              return false;
+            }
+            uniqueArticles.set(article.title, true);
+            return true;
+          });
+        }
         
         // Store initial data if this is the initial fetch
         if (isInitialFetch) {

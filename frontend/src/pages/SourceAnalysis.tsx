@@ -77,7 +77,6 @@ const SourceAnalysis = () => {
   };
 
   const fetchSources = async () => {
-    
     try {
       console.log('fetchSources called with:', { 
         pendingSearchTerm,
@@ -116,14 +115,27 @@ const SourceAnalysis = () => {
         const data = await getSourceAnalysis(filters);
         console.log('Received source analysis data:', data);
         
-        const convertedData: GroupedSourceData[] = data.map(item => ({
-          name: filterType === "author" ? item.source || "Unknown" : item.country || "Unknown",
-          source: item.source || item.pageAuthors,
-          articleCount: item.articleCount,
-          averageTone: item.averageTone,
-          lastArticleDate: item.lastArticleDate,
-          recentArticles: item.recentArticles
-        }));
+        // Ensure unique articles by title
+        const uniqueArticles = new Map();
+        const convertedData: GroupedSourceData[] = data.map(item => {
+          // Filter out duplicate articles
+          const uniqueRecentArticles = item.recentArticles.filter(article => {
+            if (uniqueArticles.has(article.title)) {
+              return false;
+            }
+            uniqueArticles.set(article.title, true);
+            return true;
+          });
+
+          return {
+            name: filterType === "author" ? item.source || "Unknown" : item.country || "Unknown",
+            source: item.source || item.pageAuthors,
+            articleCount: item.articleCount,
+            averageTone: item.averageTone,
+            lastArticleDate: item.lastArticleDate,
+            recentArticles: uniqueRecentArticles
+          };
+        });
         
         console.log('Setting sources with converted data:', convertedData);
         setApiResults(convertedData);
@@ -132,8 +144,27 @@ const SourceAnalysis = () => {
         console.log('Fetching grouped sources');
         const data = await getGroupedSources(filterType, startDate, endDate);
         console.log('Received grouped sources data:', data);
-        setApiResults(data);
-        setDisplayedSources(data);
+        
+        // Ensure unique articles by title
+        const uniqueArticles = new Map();
+        const processedData = data.map(item => {
+          // Filter out duplicate articles
+          const uniqueRecentArticles = item.recentArticles.filter(article => {
+            if (uniqueArticles.has(article.title)) {
+              return false;
+            }
+            uniqueArticles.set(article.title, true);
+            return true;
+          });
+
+          return {
+            ...item,
+            recentArticles: uniqueRecentArticles
+          };
+        });
+        
+        setApiResults(processedData);
+        setDisplayedSources(processedData);
       }
     } catch (error) {
       console.error('Error in fetchSources:', error);

@@ -124,6 +124,18 @@ class DatabaseService:
             pipeline_template = DatabaseService._get_aggregation_by_name("ARTICLES_BY_SOURCE")
             pipeline = copy.deepcopy(pipeline_template)
             pipeline[0]["$match"] = match_stage
+            
+            # Add a stage to ensure unique articles by title
+            pipeline.insert(1, {
+                "$group": {
+                    "_id": "$pageTitle",
+                    "doc": { "$first": "$$ROOT" }
+                }
+            })
+            pipeline.insert(2, {
+                "$replaceRoot": { "newRoot": "$doc" }
+            })
+            
             results = DatabaseService.aggregate_articles(pipeline)
             processed_results = []
             for result in results:
@@ -348,6 +360,18 @@ class DatabaseService:
                 DatabaseService._get_aggregation_by_name("COUNTRY_TIME_STATS_STATS")
             )
             stats_pipeline[0]["$match"] = match_stage
+            
+            # Add stages to ensure unique articles by title
+            stats_pipeline.insert(1, {
+                "$group": {
+                    "_id": "$pageTitle",
+                    "doc": { "$first": "$$ROOT" }
+                }
+            })
+            stats_pipeline.insert(2, {
+                "$replaceRoot": { "newRoot": "$doc" }
+            })
+            
             stats_results = DatabaseService.aggregate_articles(stats_pipeline)
             result = {
                 "articleCount": (
