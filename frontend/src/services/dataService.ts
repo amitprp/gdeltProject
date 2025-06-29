@@ -362,7 +362,7 @@ interface APICountryResponse {
   value: number;
   averageTone: number;
 }
-
+const API_BASE_URL = 'https://antiisraelarticlesdetection.onrender.com';
 // Get global statistics
 export const getGlobalStats = async (): Promise<GlobalStats> => {
   // Return cached data if available and not expired
@@ -371,7 +371,7 @@ export const getGlobalStats = async (): Promise<GlobalStats> => {
   }
 
   try {
-    const response = await fetch('/api/v1/articles/global-stats');
+    const response = await fetch(`${API_BASE_URL}/api/v1/articles/global-stats`);
     if (!response.ok) {
       throw new Error('Failed to fetch global stats');
     }
@@ -436,7 +436,7 @@ export const getCountryData = async (iso2: string): Promise<CountryData | undefi
   }
 
   try {
-    const response = await fetch(`/api/v1/articles/country/${iso2}`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/articles/country/${iso2}`);
     if (!response.ok) {
       if (response.status === 404) {
         return undefined;
@@ -472,7 +472,7 @@ export const getCountryTimeStats = async (
       ...(endDate && { end_date: endDate.toISOString() })
     });
 
-    const response = await fetch(`/api/v1/articles/country/${iso2}/time-stats?${params}`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/articles/country/${iso2}/time-stats?${params}`);
     if (!response.ok) {
       throw new Error('Failed to fetch country time stats');
     }
@@ -509,7 +509,7 @@ export const getGroupedSources = async (
       ...(endDate && { end_date: endDate.toISOString() })
     });
 
-    const response = await fetch(`/api/v1/sources/grouped?${params}`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/sources/grouped?${params}`);
     if (!response.ok) {
       throw new Error('Failed to fetch grouped sources');
     }
@@ -537,7 +537,7 @@ export const getSourceAnalysis = async (
       }
     }
 
-    const response = await fetch('/api/v1/sources/analysis', {
+    const response = await fetch(`${API_BASE_URL}/api/v1/sources/analysis`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -572,7 +572,7 @@ export const getTopCountries = async (): Promise<CountryData[]> => {
   }
 
   try {
-    const response = await fetch('/api/countries/top');
+    const response = await fetch(`${API_BASE_URL}/api/countries/top`);
     if (!response.ok) {
       throw new Error('Failed to fetch top countries');
     }
@@ -588,7 +588,7 @@ export const getTopCountries = async (): Promise<CountryData[]> => {
 
 export const getDailyAverages = async (): Promise<DailyAverageResponse> => {
   try {
-    const response = await fetch('/api/v1/articles/daily-averages');
+    const response = await fetch(`${API_BASE_URL}/api/v1/articles/daily-averages`);
     if (!response.ok) {
       throw new Error('Failed to fetch daily averages');
     }
