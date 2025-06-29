@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Literal, Optional
 from ...services.source_analysis_service import SourceAnalysisService
-from ...services.db.db_service import DatabaseService
+from ...services.db_service import DatabaseService
 from ...models.article import Article, HistoricalData, RealtimeData, CountryData
 from ...models.source_analysis import (
     SourceAnalysisResponse,

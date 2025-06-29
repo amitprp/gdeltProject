@@ -16,7 +16,7 @@ from utlis import (
     extract_classified_articles,
     per_day_extraction,
 )
-from backend.app.core.database import db
+from database import db
 
 def main():
 
@@ -26,8 +26,8 @@ def main():
     # start = latest_event_time if latest_event_time else datetime(2021, 1, 1)
     
     # Set specific dates for extraction
-    start = datetime(2024, 1, 1)
-    end = datetime(2024, 1, 4)
+    start = datetime(2021, 1, 1)
+    end = datetime(2025, 6, 11)
 
     per_day_extraction(start, end)
 

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional, Literal
-from .db.db_service import DatabaseService
+from .db_service import DatabaseService
 import logging
 import traceback
 

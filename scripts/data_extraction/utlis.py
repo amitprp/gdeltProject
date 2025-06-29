@@ -12,6 +12,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from data.mapping_data.classification_data import against_israel_themes, against_israel_keywords
 from scripts.data_extraction.constants import TONE_WEIGHTS, THEME_WEIGHT, KEYWORD_WEIGHT, CLASSIFICATION_THRESHOLD, ARTICLES_COLLECTION, EVENTS_COLLECTION, gd, url_to_country
 from backend.app.core.database import db
+from constants import TONE_WEIGHTS, THEME_WEIGHT, KEYWORD_WEIGHT, CLASSIFICATION_THRESHOLD, ARTICLES_COLLECTION, EVENTS_COLLECTION, gd, url_to_country
+from database import db
 
 
 
