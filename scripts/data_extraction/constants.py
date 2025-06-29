@@ -9,8 +9,8 @@ TONE_WEIGHTS = {
     "activity": 0.2,  # Less important, but included to reflect energy in the language
 }
 
-ARTICLES_COLLECTION="articles_test"
-EVENTS_COLLECTION="events_test"
+ARTICLES_COLLECTION="new_articles"
+EVENTS_COLLECTION="new_events"
 
 THEME_WEIGHT = 1.0  # Weight per matching theme
 KEYWORD_WEIGHT = 2.0  # Weight per matching keyword

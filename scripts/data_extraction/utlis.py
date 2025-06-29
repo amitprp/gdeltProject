@@ -3,8 +3,14 @@ import pandas as pd
 from datetime import datetime, timedelta
 import json
 from typing import Dict, List
+import sys
+import os
+
+# Add the project root to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 from data.mapping_data.classification_data import against_israel_themes, against_israel_keywords
-from .constants import TONE_WEIGHTS, THEME_WEIGHT, KEYWORD_WEIGHT, CLASSIFICATION_THRESHOLD, ARTICLES_COLLECTION, EVENTS_COLLECTION, gd, url_to_country
+from scripts.data_extraction.constants import TONE_WEIGHTS, THEME_WEIGHT, KEYWORD_WEIGHT, CLASSIFICATION_THRESHOLD, ARTICLES_COLLECTION, EVENTS_COLLECTION, gd, url_to_country
 from backend.app.core.database import db
 
 

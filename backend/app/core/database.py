@@ -9,8 +9,6 @@ from app.core.config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-client = MongoClient(settings.MONGO_URI)
+client = MongoClient(settings.MONGODB_URI)
 db = client["JewWatch"]
-articles_collection = db["articles"]
-# articles_collection = db["articles_subset"]
-# articles_collection = db["new_articles"]
+articles_collection = db["against_israel"]
