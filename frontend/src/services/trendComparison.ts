@@ -26,8 +26,8 @@ export const timeFrameComparison = async (
       const utcDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
       return utcDate.toISOString();
     };
-
-    const response = await fetch('/api/v1/articles/compare-trends', {
+    const API_BASE_URL = 'https://antiisraelarticlesdetection.onrender.com';
+    const response = await fetch(`${API_BASE_URL}/api/v1/articles/compare-trends`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
