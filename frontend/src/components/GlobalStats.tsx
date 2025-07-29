@@ -76,7 +76,7 @@ const GlobalStatsCard: React.FC<GlobalStatsCardProps> = ({ data }) => {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <Card className="shadow-md">
         <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm font-medium">Total Antisemitic Articles</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Anti-Israeli Articles</CardTitle>
           <Globe className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
