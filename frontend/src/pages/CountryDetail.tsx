@@ -403,7 +403,7 @@ const CountryDetail: React.FC = () => {
             <CardContent>
               <div className="flex flex-col md:flex-row items-center justify-between">
                 <div className="mb-4 md:mb-0">
-                  <div className="text-sm text-muted-foreground mb-1">Antisemitism Level</div>
+                  <div className="text-sm text-muted-foreground mb-1">Anti-Israeli Level</div>
                   <div className="text-3xl font-bold flex items-center">
                     {(!timeStats || timeStats.articleCount === 0) ? "Low" : getSeverityLabel(timeStats.articleCount)}
                     <span className={`ml-2 inline-block w-3 h-3 rounded-full ${(!timeStats || timeStats.articleCount === 0) ? 'bg-map-low' : getSeverityColor(timeStats.articleCount)}`}></span>
@@ -441,7 +441,7 @@ const CountryDetail: React.FC = () => {
                   <p className="text-muted-foreground max-w-md mx-auto">
                     {startDate || endDate ? 
                       `No articles found for ${country.name} in the selected date range.` :
-                      `No antisemitic articles have been detected for ${country.name}.`
+                      `No Anti-Israeli articles have been detected for ${country.name}.`
                     }
                   </p>
                 </div>
