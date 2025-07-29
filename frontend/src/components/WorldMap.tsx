@@ -195,7 +195,7 @@ const WorldMap: React.FC = () => {
               <Globe className="h-12 w-12 text-primary mx-auto" />
               <h3 className="text-xl font-semibold">Interactive World Map</h3>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Click the button below to load the interactive map and explore antisemitism data by country.
+                Click the button below to load the interactive map and explore anti-israeli data by country.
               </p>
               <Button onClick={handleLoadMap} className="mt-4">
                 Load Map
@@ -209,7 +209,7 @@ const WorldMap: React.FC = () => {
         ) : null}
         <div ref={mapContainer} className="w-full h-[600px]" />
         <div className="absolute bottom-4 right-4 bg-white shadow-lg rounded-md p-3 z-10">
-          <h4 className="font-medium text-sm mb-2">Antisemitism Level</h4>
+          <h4 className="font-medium text-sm mb-2">Anti-Israeli Level</h4>
           <div className="space-y-1">
             <div className="flex items-center">
               <div className="w-4 h-4 bg-map-low mr-2 rounded-sm"></div>
