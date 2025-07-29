@@ -126,7 +126,7 @@ const WorldMap: React.FC = () => {
               popup.setLngLat(e.lngLat)
                 .setHTML(`
                   <div class="font-bold">${countryInfo.name}</div>
-                  <div>Antisemitic Articles: ${value}</div>
+                  <div>Anti-Israeli Articles: ${value}</div>
                 `)
                 .addTo(map.current!);
             }
