@@ -148,7 +148,7 @@ const ContinentChart: React.FC<ContinentChartProps> = ({ data }) => {
   return (
     <Card className="shadow-md">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">Antisemitic Articles by Continent</CardTitle>
+        <CardTitle className="text-lg">Anti-Israeli Articles by Continent</CardTitle>
         <ExportButton
           targetRef={chartRef}
           type="chart"
