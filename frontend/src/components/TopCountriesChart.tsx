@@ -98,7 +98,7 @@ const TopCountriesChart: React.FC<TopCountriesChartProps> = ({ data }) => {
   return (
     <Card className="shadow-md">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">Top 7 Countries by Antisemitic Articles</CardTitle>
+        <CardTitle className="text-lg">Top 7 Countries by Anti-Israeli Articles</CardTitle>
         <ExportButton
           targetRef={chartRef}
           type="chart"
