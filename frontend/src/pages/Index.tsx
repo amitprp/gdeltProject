@@ -73,9 +73,9 @@ const Index = () => {
     <div className="container mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-8">
         <div>
-        <h1 className="text-3xl font-bold mb-2">Global Antisemitism Insights</h1>
+        <h1 className="text-3xl font-bold mb-2">Global Anti-Israeli Insights</h1>
         <p className="text-muted-foreground">
-          Interactive dashboard showcasing antisemitic article prevalence across the world
+          Interactive dashboard showcasing anti-israeli article prevalence across the world
         </p>
         </div>
         <div className="flex gap-4">
@@ -105,14 +105,14 @@ const Index = () => {
       <div className="mb-8">
         <h2 className="text-xl font-semibold mb-4">Interactive World Map</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Explore antisemitism data by country. Click on any country to see detailed information.
+          Explore Anti-Israeli data by country. Click on any country to see detailed information.
         </p>
         <WorldMap />
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <div>
-          <h2 className="text-xl font-semibold mb-4">Antisemitism by Continent</h2>
+          <h2 className="text-xl font-semibold mb-4">Anti-Israeli by Continent</h2>
           <ContinentChart data={globalStats.continents} />
         </div>
         <div>
@@ -125,7 +125,7 @@ const Index = () => {
         <div>
           <h2 className="text-xl font-semibold mb-4">Daily Average by Country</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Average number of antisemitic articles published daily. Toggle between highest and lowest averages.
+            Average number of anti-israeli articles published daily. Toggle between highest and lowest averages.
           </p>
           <DailyAveragesChart data={dailyAverages} />
         </div>
